@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>API Reference</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <!--
+This script tag is the core of Scalar.
+'data-url' points to the location where our Gin app serves the raw swagger.json.
+The default path for this from gin-swagger is /swagger/doc.json
+-->
+    <script id="api-reference" data-url="/swagger/doc.json"></script>
+
+    <!-- This script loads the Scalar javascript -->
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body>
+
+</html>

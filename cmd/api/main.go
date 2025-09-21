@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 
+	_ "selfier/docs"
 	jobAdapter "selfier/internal/job/adapter"
 	jobCore "selfier/internal/job/core"
 	"selfier/pkg/config"
@@ -30,6 +31,18 @@ type application struct {
 	db     *gorm.DB
 }
 
+// @title           Selfier Job Service API
+// @version         1.0
+// @description     This is the API for creating and managing jobs in the Selfier service.
+// @termsOfService  http://swagger.io/terms/
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+// @host      localhost:8080
+// @BasePath  /api/v1
+// @schemes   http
 func main() {
 	// === 1. Bootstrap Phase ===
 	// Load configuration and initialize logger.
