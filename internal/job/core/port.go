@@ -9,12 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// JobStatus represents the lifecycle of a job.
-type JobStatus string
+type JobType string
 
 const (
 	JobTypeDeselfie JobType = "deselfie"
 )
+
+// JobStatus represents the lifecycle of a job.
+type JobStatus string
 
 const (
 	StatusPending    JobStatus = "pending"
@@ -22,8 +24,6 @@ const (
 	StatusCompleted  JobStatus = "completed"
 	StatusFailed     JobStatus = "failed"
 )
-
-type JobType string
 
 type Job struct {
 	ID        string          `json:"id"`

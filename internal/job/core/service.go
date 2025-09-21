@@ -6,20 +6,18 @@ import (
 	"encoding/json"
 	"fmt"
 
-	deselfieCore "selfier/internal/deselfie/core"
-
 	"github.com/google/uuid"
 )
 
 type jobServiceImpl struct {
-	repo             JobRepository
-	deselfiePipeline deselfieCore.DeselfiePipeline
+	repo JobRepository
+	// deselfiePipeline deselfieCore.DeselfiePipeline
 }
 
-func NewJobService(repo JobRepository, deselfiePipeline deselfieCore.DeselfiePipeline) JobService {
+func NewJobService(repo JobRepository) JobService {
 	return &jobServiceImpl{
-		repo:             repo,
-		deselfiePipeline: deselfiePipeline,
+		repo: repo,
+		// deselfiePipeline: deselfiePipeline,
 	}
 }
 
