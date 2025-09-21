@@ -13,14 +13,12 @@ import (
 
 type jobServiceImpl struct {
 	repo             JobRepository
-	blobRepo         BlobRepository
 	deselfiePipeline deselfieCore.DeselfiePipeline
 }
 
-func NewJobService(repo JobRepository, blobRepo BlobRepository, deselfiePipeline deselfieCore.DeselfiePipeline) JobService {
+func NewJobService(repo JobRepository, deselfiePipeline deselfieCore.DeselfiePipeline) JobService {
 	return &jobServiceImpl{
 		repo:             repo,
-		blobRepo:         blobRepo,
 		deselfiePipeline: deselfiePipeline,
 	}
 }
@@ -70,6 +68,14 @@ func (s *jobServiceImpl) GetJobByID(ctx context.Context, id string) (*Job, error
 		return nil, fmt.Errorf("failed to get job by id %s: %w", id, err)
 	}
 	return job, nil
+}
+
+func (s *jobServiceImpl) UpdateJobStatus(ctx context.Context, id string, status JobStatus, result json.RawMessage, errMsg *string) error {
+	err := s.repo.UpdateJobStatus(ctx, id, status, result, errMsg)
+	if err != nil {
+		return fmt.Errorf("failed to update job status: %w", err)
+	}
+	return nil
 }
 
 // DeleteJobByID deletes a job by its ID by delegating the call to the repository.

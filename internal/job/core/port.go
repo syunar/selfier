@@ -4,6 +4,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,12 +26,14 @@ const (
 type JobType string
 
 type Job struct {
-	ID      string          `json:"id"`
-	Type    JobType         `json:"type"`
-	Status  JobStatus       `json:"status"`
-	Payload json.RawMessage `json:"payload"`          // Holds the specific input data (e.g., DeselfiePayload)
-	Result  json.RawMessage `json:"result,omitempty"` // Holds the specific output data (e.g., DeselfieResult)
-	Error   *string         `json:"error,omitempty"`  // To store error messages on failure
+	ID        string          `json:"id"`
+	Type      JobType         `json:"type"`
+	Status    JobStatus       `json:"status"`
+	Payload   json.RawMessage `json:"payload"`          // Holds the specific input data (e.g., DeselfiePayload)
+	Result    json.RawMessage `json:"result,omitempty"` // Holds the specific output data (e.g., DeselfieResult)
+	Error     *string         `json:"error,omitempty"`  // To store error messages on failure
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
 }
 
 // JobHTTPHandler defines the HTTP layer for managing jobs.
@@ -53,7 +56,7 @@ type JobRepository interface {
 	CreateJob(ctx context.Context, job *Job) (*Job, error)
 	GetAllJobs(ctx context.Context) ([]*Job, error)
 	GetJobByID(ctx context.Context, id string) (*Job, error)
-	UpdateJob(ctx context.Context, job *Job) error
+	UpdateJobStatus(ctx context.Context, id string, status JobStatus, result json.RawMessage, errMsg *string) error
 	DeleteJobByID(ctx context.Context, id string) error
 }
 
@@ -62,5 +65,6 @@ type JobService interface {
 	CreateJob(ctx context.Context, jobType JobType, payload json.RawMessage) (*Job, error)
 	GetAllJobs(ctx context.Context) ([]*Job, error)
 	GetJobByID(ctx context.Context, id string) (*Job, error)
+	UpdateJobStatus(ctx context.Context, id string, status JobStatus, result json.RawMessage, errMsg *string) error
 	DeleteJobByID(ctx context.Context, id string) error
 }
