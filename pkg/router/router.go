@@ -3,14 +3,14 @@ package router
 
 import (
 	"net/http"
-	jobCore "selfier/internal/job/core"
+	"selfier/internal/module/job"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func NewRouter(jobHandler jobCore.JobHTTPHandler) *gin.Engine {
+func NewRouter(jobHandler job.JobHTTPHandler) *gin.Engine {
 	r := gin.Default()
 
 	// Tell Gin to load our HTML template
@@ -21,17 +21,17 @@ func NewRouter(jobHandler jobCore.JobHTTPHandler) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// API v1 routes
-	apiV1 := r.Group("/api/v1")
-	{
-		jobs := apiV1.Group("/jobs")
-		{
-			jobs.POST("", jobHandler.CreateJob)
-			jobs.GET("", jobHandler.GetAllJobs)
-			jobs.GET("/:id", jobHandler.GetJobByID)
-			jobs.DELETE("/:id", jobHandler.DeleteJobByID)
-		}
-	}
+	// // API v1 routes
+	// apiV1 := r.Group("/api/v1")
+	// {
+	// 	jobs := apiV1.Group("/jobs")
+	// 	{
+	// 		jobs.POST("", jobHandler.CreateJob)
+	// 		jobs.GET("", jobHandler.GetAllJobs)
+	// 		jobs.GET("/:id", jobHandler.GetJobByID)
+	// 		jobs.DELETE("/:id", jobHandler.DeleteJobByID)
+	// 	}
+	// }
 
 	// --- Swagger and Scalar Setup ---
 
