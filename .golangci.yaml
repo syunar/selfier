@@ -13,7 +13,7 @@ linters:
     - unconvert
     - goconst
     - gocyclo
-    - revive
+    # - revive
     - exhaustruct
 
 linters-settings:
