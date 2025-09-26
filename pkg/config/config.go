@@ -26,6 +26,7 @@ type Config struct {
 type Primary struct {
 	Env         string `mapstructure:"env" validate:"required,oneof=development staging production"`
 	ServiceName string `mapstructure:"service_name" validate:"required"`
+	Version     string `mapstructure:"version" validate:"required"`
 }
 
 func (p Primary) IsProd() bool {
@@ -69,8 +70,7 @@ type GormLoggerConfig struct {
 
 // LoggerConfig for application-wide logging settings.
 type LoggerConfig struct {
-	Level  string `mapstructure:"level" validate:"required"`
-	Format string `mapstructure:"format" validate:"required,oneof=json console"`
+	Level string `mapstructure:"level" validate:"required"`
 }
 
 type RedisConfig struct {
@@ -96,7 +96,8 @@ func LoadConfig() (*Config, error) {
 
 	// 1. Set reasonable defaults
 	viper.SetDefault("primary.env", "development")
-	viper.SetDefault("primary.service_name", "my-app")
+	viper.SetDefault("primary.service_name", "selfier")
+	viper.SetDefault("primary.version", "1.0.0")
 	viper.SetDefault("server.port", "8080")
 	viper.SetDefault("server.read_timeout", 15)
 	viper.SetDefault("server.write_timeout", 15)
@@ -126,7 +127,6 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("aws.upload_bucket", "upload_bucket")
 
 	viper.SetDefault("logger.level", "info")
-	viper.SetDefault("logger.format", "console")
 
 	// 2. Set up to read from a config file (e.g., config.yml)
 	viper.SetConfigName("config")

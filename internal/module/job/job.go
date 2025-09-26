@@ -1,14 +1,22 @@
 // Package job contains the ports or interefaces for the job module
 package job
 
-import "context"
+import (
+	"context"
+)
 
 type JobHTTPHandler interface {
-	CreateJob(ctx context.Context, input *struct{ any })
-	GetJobs(ctx context.Context, input *struct{ any })
-	GetJobByID(ctx context.Context, input *struct{ any })
-	DeleteJobByID(ctx context.Context, input *struct{ any })
-	GetJobResultsByID(ctx context.Context, input *struct{ any })
+	CreateJob(ctx context.Context, input *CreateJobInput) (*JobOutput, error)
+	GetJobs(ctx context.Context, input *struct{}) (*JobsOutput, error)
+	GetJobByID(ctx context.Context, input *struct {
+		ID string `path:"id"`
+	}) (*JobOutput, error)
+	DeleteJobByID(ctx context.Context, input *struct {
+		ID string `path:"id"`
+	}) (*struct{}, error)
+	GetJobResultsByID(ctx context.Context, input *struct {
+		ID string `path:"id"`
+	}) (*JobResultsOutput, error)
 }
 
 type JobService interface {

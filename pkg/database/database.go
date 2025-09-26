@@ -10,17 +10,15 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 // NewConnection creates and returns a new GORM DB instance based on the provided configuration.
 // It also configures the connection pool and pings the database to ensure connectivity.
-func NewConnection(cfg *config.DatabaseConfig, gormLogger logger.Interface) (*gorm.DB, error) {
+func NewConnection(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 	// 1. Create the Data Source Name (DSN) string from the config
 
 	// 3. Open the database connection
 	db, err := gorm.Open(postgres.Open(cfg.DSN()), &gorm.Config{ //nolint:exhaustruct
-		Logger: gormLogger,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
