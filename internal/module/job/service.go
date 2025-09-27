@@ -17,34 +17,34 @@ func NewJobService(jobRepository JobRepository, jobResultRepository JobResultRep
 }
 
 func (s *jobServiceImpl) CreateJob() {
-	s.jobRepository.CreateJob()
-	s.jobEventPublisher.PublishCreatedJobEvent()
+	// s.jobRepository.CreateJob()
+	// s.jobEventPublisher.PublishCreatedJobEvent()
 }
 
 func (s *jobServiceImpl) GetJobs() {
-	s.jobRepository.GetJobs()
+	// s.jobRepository.GetJobs()
 }
 
 func (s *jobServiceImpl) GetJobByID() {
-	s.jobRepository.GetJobByID()
+	// s.jobRepository.GetJobByID()
 }
 
 func (s *jobServiceImpl) DeleteJobByID() {
-	s.jobRepository.DeleteJobByID()
+	// s.jobRepository.DeleteJobByID()
 }
 
 func (s *jobServiceImpl) GetJobResultsByID() {
-	s.jobResultRepository.GetResultsByJobID()
+	// s.jobResultRepository.GetResultsByJobID()
 }
 
 func (s *jobServiceImpl) UpdateJobStatus() {
-	s.jobRepository.UpdateJobStatus()
+	// s.jobRepository.UpdateJobStatus()
 }
 
 func (s *jobServiceImpl) UploadImage() {
-	s.jobObjectStorage.UploadImage()
+	// s.jobObjectStorage.UploadImage()
 }
 
 func (s *jobServiceImpl) GetPresignedURL() {
-	s.jobObjectStorage.GetPresignedURL()
+	// s.jobObjectStorage.GetPresignedURL()
 }

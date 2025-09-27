@@ -56,8 +56,8 @@ func main() {
 	}
 
 	// 4. Initialize dependencies
-	jobRepository := job.NewJobRepositoryGorm(db)
-	jobResultRepository := job.NewJobResultRepositoryGorm(db)
+	jobRepository, _ := job.NewJobRepositoryGorm(db)
+	jobResultRepository, _ := job.NewJobResultRepositoryGorm(db)
 	jobEventPublisher := job.NewJobEventPublisherInngest()
 	jobObjectStorage := job.NewJobObjectStorageAWS()
 
