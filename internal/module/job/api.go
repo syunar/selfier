@@ -10,37 +10,7 @@ import (
 	"path/filepath"
 	"selfier/pkg/middleware"
 	"time"
-
-	"github.com/danielgtaylor/huma/v2"
 )
-
-type CreateJobRawBody struct {
-	Type        string        `form:"type" doc:"Job type" enum:"deselfie" example:"deselfie" required:"true"`
-	ModelConfig string        `form:"model_config" doc:"Job model configuration" example:"{\"prompt\": \"a photo of a person\"}" default:"{}" required:"true"`
-	Image       huma.FormFile `form:"file" required:"true"`
-}
-
-type CreateJobInput struct {
-	RawBody huma.MultipartFormFiles[CreateJobRawBody]
-}
-
-type JobBody struct {
-	ID          string                 `json:"id" example:"123"`
-	Type        string                 `json:"type" example:"deselfie"`
-	ModelConfig map[string]interface{} `json:"model_config" example:"{\"prompt\": \"a photo of a person\"}"`
-	ImageKey    string                 `json:"image_key" example:"jobs/123/image.jpg"`
-	Status      string                 `json:"status" example:"pending"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
-}
-
-type JobOutput struct {
-	Body JobBody `json:"body"`
-}
-
-type JobsOutput struct {
-	Body []JobBody `json:"body"`
-}
 
 type jobHTTPHandlerImpl struct {
 	JobService JobService
