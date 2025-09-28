@@ -43,11 +43,12 @@ func NewRouter(jobHandler job.JobHTTPHandler, baseLogger *slog.Logger) *http.Ser
 	})
 
 	huma.Register(api, huma.Operation{ //nolint:exhaustruct
-		OperationID: "create-job",
-		Method:      http.MethodPost,
-		Path:        "/jobs",
-		Summary:     "Create a new job",
-		Tags:        []string{"Jobs"},
+		OperationID:   "create-job",
+		Method:        http.MethodPost,
+		Path:          "/jobs",
+		Summary:       "Create a new job",
+		Tags:          []string{"Jobs"},
+		DefaultStatus: http.StatusCreated,
 	}, jobHandler.CreateJob)
 
 	huma.Register(api, huma.Operation{ //nolint:exhaustruct

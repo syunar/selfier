@@ -13,12 +13,11 @@ func LoggerMiddleware(base *slog.Logger) func(ctx huma.Context, next func(huma.C
 	return func(ctx huma.Context, next func(huma.Context)) {
 
 		ctx = huma.WithValue(ctx, "logger", base)
-
 		start := time.Now()
 		next(ctx)
 		duration := time.Since(start)
 
-		log := Getlogger(ctx.Context())
+		log := GetLogger(ctx.Context())
 		log.Info("request completed",
 			slog.String("request_id", GetRequestID(ctx.Context())),
 			slog.String("user_id", GetUserID(ctx.Context())),
@@ -30,7 +29,7 @@ func LoggerMiddleware(base *slog.Logger) func(ctx huma.Context, next func(huma.C
 	}
 }
 
-func Getlogger(ctx context.Context) *slog.Logger {
+func GetLogger(ctx context.Context) *slog.Logger {
 	if v, ok := ctx.Value("logger").(*slog.Logger); ok {
 		return v
 	}

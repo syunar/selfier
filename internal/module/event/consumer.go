@@ -21,11 +21,11 @@ func NewEventConsumer(jobService job.JobService, notificationService notificatio
 }
 
 func (e *eventConsumerImpl) JobCreatedEvent() {
-	e.jobService.GetJobByID()
-	e.jobService.GetPresignedURL()
-	e.jobService.UpdateJobStatus()
-	e.aideselfieService.GenerateMultiple()
-	e.jobService.UploadImage()
-	e.jobService.UpdateJobStatus()
-	e.notificationService.SendNotification()
+	// e.jobService.GetJobByID()
+	// e.jobService.GetPresignedURL()
+	// e.jobService.UpdateJobStatus()
+	// e.aideselfieService.GenerateMultiple()
+	// e.jobService.UploadImage()
+	// e.jobService.UpdateJobStatus()
+	// e.notificationService.SendNotification()
 }

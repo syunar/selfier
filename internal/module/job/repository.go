@@ -24,7 +24,7 @@ func NewJobRepositoryGorm(db *gorm.DB) (JobRepository, error) {
 
 func (r *jobRepositoryGorm) CreateJob(ctx context.Context, id string, jobType string, modelConfig map[string]interface{}, imageKey string, status string) (*JobModel, error) {
 
-	log := middleware.Getlogger(ctx)
+	log := middleware.GetLogger(ctx)
 
 	configBytes, err := json.Marshal(modelConfig)
 	if err != nil {
@@ -53,7 +53,7 @@ func (r *jobRepositoryGorm) CreateJob(ctx context.Context, id string, jobType st
 }
 
 func (r *jobRepositoryGorm) GetJobs(ctx context.Context) ([]JobModel, error) {
-	log := middleware.Getlogger(ctx)
+	log := middleware.GetLogger(ctx)
 
 	var jobs []JobModel
 
@@ -67,7 +67,7 @@ func (r *jobRepositoryGorm) GetJobs(ctx context.Context) ([]JobModel, error) {
 }
 
 func (r *jobRepositoryGorm) GetJobByID(ctx context.Context, id string) (*JobModel, error) {
-	log := middleware.Getlogger(ctx)
+	log := middleware.GetLogger(ctx)
 	var job JobModel
 
 	result := r.db.WithContext(ctx).Where("id = ?", id).First(&job)
@@ -83,7 +83,7 @@ func (r *jobRepositoryGorm) GetJobByID(ctx context.Context, id string) (*JobMode
 }
 
 func (r *jobRepositoryGorm) DeleteJobByID(ctx context.Context, id string) error {
-	log := middleware.Getlogger(ctx)
+	log := middleware.GetLogger(ctx)
 
 	//nolint:exhaustruct
 	result := r.db.WithContext(ctx).Where("id = ?", id).Delete(&JobModel{})
@@ -97,7 +97,7 @@ func (r *jobRepositoryGorm) DeleteJobByID(ctx context.Context, id string) error 
 }
 
 func (r *jobRepositoryGorm) UpdateJobStatus(ctx context.Context, id string, status string) (*JobModel, error) {
-	log := middleware.Getlogger(ctx)
+	log := middleware.GetLogger(ctx)
 
 	//nolint:exhaustruct
 	result := r.db.WithContext(ctx).Model(&JobModel{}).
@@ -130,7 +130,7 @@ func NewJobResultRepositoryGorm(db *gorm.DB) (JobResultRepository, error) {
 }
 
 func (r *jobResultRepositoryGorm) CreateResult(ctx context.Context, id string, jobID string, imageKey string) (*JobResultModel, error) {
-	log := middleware.Getlogger(ctx)
+	log := middleware.GetLogger(ctx)
 
 	jobResult := JobResultModel{ //nolint:exhaustruct
 		ID:       id,
@@ -151,7 +151,7 @@ func (r *jobResultRepositoryGorm) CreateResult(ctx context.Context, id string, j
 }
 
 func (r *jobResultRepositoryGorm) GetResultsByJobID(ctx context.Context, jobID string) ([]JobResultModel, error) {
-	log := middleware.Getlogger(ctx)
+	log := middleware.GetLogger(ctx)
 	var jobResultModels []JobResultModel
 
 	result := r.db.WithContext(ctx).Where("job_id = ?", jobID).Find(&jobResultModels)
