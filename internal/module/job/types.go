@@ -47,22 +47,21 @@ const (
 // ---------------
 
 type Job struct {
-	ID          string
-	Type        string
-	ModelConfig map[string]interface{}
-	ImageKey    string
-	Status      string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          string                 `json:"id" example:"123"`
+	Type        string                 `json:"type" example:"deselfie"`
+	ModelConfig map[string]interface{} `json:"model_config" example:"{\"prompt\": \"a photo of a person\"}"`
+	ImageKey    string                 `json:"image_key" example:"jobs/123/image.jpg"`
+	Status      string                 `json:"status" example:"pending"`
+	CreatedAt   time.Time              `json:"created_at"`
+	UpdatedAt   time.Time              `json:"updated_at"`
 }
 
 type JobResult struct {
-	ID                string
-	JobID             string
-	ImagePresignedURL *string
-	Stataus           string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	ID                string    `json:"id" example:"abc"`
+	JobID             string    `json:"job_id" example:"123"`
+	ImagePresignedURL string    `json:"image_presigned_url" example:"https://example.com/image.jpg"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 // ---------------
@@ -89,32 +88,30 @@ func GetJobFromModel(jobModel *JobModel) (*Job, error) {
 // Handler DTOs
 // ---------------
 
+// ---- Body ----
+
 type CreateJobRawBody struct {
 	Type        string        `form:"type" doc:"Job type" enum:"deselfie" example:"deselfie" required:"true"`
 	ModelConfig string        `form:"model_config" doc:"Job model configuration" example:"{\"prompt\": \"a photo of a person\"}" default:"{}" required:"true"`
-	Image       huma.FormFile `form:"file" required:"true"`
+	Image       huma.FormFile `form:"image" required:"true"`
 }
+
+// ---- Input and Output ----
 
 type CreateJobInput struct {
 	RawBody huma.MultipartFormFiles[CreateJobRawBody]
 }
 
-type JobBody struct {
-	ID          string                 `json:"id" example:"123"`
-	Type        string                 `json:"type" example:"deselfie"`
-	ModelConfig map[string]interface{} `json:"model_config" example:"{\"prompt\": \"a photo of a person\"}"`
-	ImageKey    string                 `json:"image_key" example:"jobs/123/image.jpg"`
-	Status      string                 `json:"status" example:"pending"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
-}
-
 type JobOutput struct {
-	Body JobBody `json:"body"`
+	Body Job `json:"body"`
 }
 
 type JobsOutput struct {
-	Body []JobBody `json:"body"`
+	Body []*Job `json:"body"`
+}
+
+type JobResultsOutput struct {
+	Body []*JobResult `json:"body"`
 }
 
 // ---------------

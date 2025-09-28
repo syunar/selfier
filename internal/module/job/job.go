@@ -3,6 +3,7 @@ package job
 
 import (
 	"context"
+	"io"
 )
 
 type JobHTTPHandler interface {
@@ -20,14 +21,14 @@ type JobHTTPHandler interface {
 }
 
 type JobService interface {
-	CreateJob()
-	GetJobs()
-	GetJobByID()
-	DeleteJobByID()
-	GetJobResultsByID()
-	UpdateJobStatus()
-	UploadImage()
-	GetPresignedURL()
+	CreateJob(ctx context.Context, jobType string, modelConfig map[string]interface{}, imageReader io.Reader, imageFilename string) (*Job, error)
+	GetJobs(ctx context.Context) ([]*Job, error)
+	GetJobByID(ctx context.Context, jobID string) (*Job, error)
+	DeleteJobByID(ctx context.Context, jobID string) error
+	GetJobResultsByID(ctx context.Context, jobID string) ([]*JobResult, error)
+	// UpdateJobStatus(ctx context.Context, jobID string, status string) (*Job, error)
+	// UploadImage(ctx context.Context, imageReader io.Reader, imageFilename string) (string, error)
+	// GetPresignedURL(ctx context.Context, imageKey string) (string, error)
 }
 
 type JobRepository interface {
