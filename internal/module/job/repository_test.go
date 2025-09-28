@@ -11,8 +11,8 @@ import (
 	"gorm.io/gorm"
 )
 
-//nolint:exhaustruct
 func setupMockDB(t *testing.T) *gorm.DB {
+	//nolint:exhaustruct
 	gormDB, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{TranslateError: true})
 	if err != nil {
 		t.Fatalf("failed to open gorm in-memory sqlite database: %v", err)
@@ -103,7 +103,7 @@ func TestJobRepositoryGorm_CreateJob(t *testing.T) {
 			name:        "failed_marshal_model_config",
 			id:          "124",
 			jobType:     "",
-			modelConfig: map[string]interface{}{"prompt": make(chan int)}, // Channel cannot be marshalled
+			modelConfig: map[string]interface{}{"prompt": make(chan int)},
 			imageKey:    "jobs/124/image.jpg",
 			status:      StatusPending,
 
@@ -114,7 +114,7 @@ func TestJobRepositoryGorm_CreateJob(t *testing.T) {
 			name:        "failed_db_connection",
 			id:          "123",
 			jobType:     JobTypeDeselfie,
-			modelConfig: configData, // Channel cannot be marshalled
+			modelConfig: configData,
 			imageKey:    "jobs/123/image.jpg",
 			status:      StatusPending,
 
@@ -361,7 +361,7 @@ func TestJobRepository_DeleteJobByID(t *testing.T) {
 			}
 			err = repo.DeleteJobByID(t.Context(), c.id)
 			if c.wantErr != nil {
-				assert.EqualError(t, err, c.wantErr.Error())
+				assert.ErrorIs(t, err, c.wantErr)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -429,7 +429,7 @@ func TestJobRepository_UpdateJobStatus(t *testing.T) {
 
 			got, err := repo.UpdateJobStatus(t.Context(), c.id, c.status)
 			if c.wantErr != nil {
-				assert.EqualError(t, err, c.wantErr.Error())
+				assert.ErrorIs(t, err, c.wantErr)
 				assert.Nil(t, got)
 			} else {
 				assert.NoError(t, err)
@@ -527,7 +527,7 @@ func TestJobResultRepositoryGorm_CreateResult(t *testing.T) {
 
 			got, err := repo.CreateResult(t.Context(), c.id, c.jobID, c.imageKey)
 			if c.wantErr != nil {
-				assert.EqualError(t, err, c.wantErr.Error())
+				assert.ErrorIs(t, err, c.wantErr)
 				assert.Nil(t, got)
 			} else {
 				assert.NoError(t, err)
@@ -600,7 +600,7 @@ func TestJobResultRepositoryGorm_GetResultsByJobID(t *testing.T) {
 
 			got, err := repo.GetResultsByJobID(t.Context(), c.jobID)
 			if c.wantErr != nil {
-				assert.EqualError(t, err, c.wantErr.Error())
+				assert.ErrorIs(t, err, c.wantErr)
 				assert.Nil(t, got)
 			} else {
 				assert.NoError(t, err)

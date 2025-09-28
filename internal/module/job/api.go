@@ -13,12 +13,12 @@ import (
 )
 
 type jobHTTPHandlerImpl struct {
-	JobService JobService
+	jobService JobService
 }
 
 func NewJobHTTPHandler(jobService JobService) JobHTTPHandler {
 	return &jobHTTPHandlerImpl{
-		JobService: jobService,
+		jobService: jobService,
 	}
 }
 
@@ -107,7 +107,7 @@ func (h *jobHTTPHandlerImpl) GetJobByID(ctx context.Context, input *struct {
 func (h *jobHTTPHandlerImpl) DeleteJobByID(ctx context.Context, input *struct {
 	ID string `path:"id"`
 }) (*struct{}, error) {
-	h.JobService.DeleteJobByID()
+	h.jobService.DeleteJobByID()
 
 	return &struct{}{}, nil
 }
@@ -125,7 +125,7 @@ type JobResultsOutput struct {
 func (h *jobHTTPHandlerImpl) GetJobResultsByID(ctx context.Context, input *struct {
 	ID string `path:"id"`
 }) (*JobResultsOutput, error) {
-	h.JobService.GetJobResultsByID()
+	h.jobService.GetJobResultsByID()
 	resp := &JobResultsOutput{
 		Body: []JobResultsBody{
 
