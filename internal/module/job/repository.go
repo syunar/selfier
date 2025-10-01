@@ -52,10 +52,10 @@ func (r *jobRepositoryGorm) CreateJob(ctx context.Context, id string, jobType st
 	return &jobModel, nil
 }
 
-func (r *jobRepositoryGorm) GetJobs(ctx context.Context) ([]JobModel, error) {
+func (r *jobRepositoryGorm) GetJobs(ctx context.Context) ([]*JobModel, error) {
 	log := middleware.GetLogger(ctx)
 
-	var jobs []JobModel
+	var jobs []*JobModel
 
 	result := r.db.WithContext(ctx).Find(&jobs)
 	if result.Error != nil {
@@ -150,9 +150,9 @@ func (r *jobResultRepositoryGorm) CreateResult(ctx context.Context, id string, j
 	return &jobResult, nil
 }
 
-func (r *jobResultRepositoryGorm) GetResultsByJobID(ctx context.Context, jobID string) ([]JobResultModel, error) {
+func (r *jobResultRepositoryGorm) GetResultsByJobID(ctx context.Context, jobID string) ([]*JobResultModel, error) {
 	log := middleware.GetLogger(ctx)
-	var jobResultModels []JobResultModel
+	var jobResultModels []*JobResultModel
 
 	result := r.db.WithContext(ctx).Where("job_id = ?", jobID).Find(&jobResultModels)
 	if result.Error != nil {

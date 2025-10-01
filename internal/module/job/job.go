@@ -26,14 +26,14 @@ type JobService interface {
 	GetJobByID(ctx context.Context, jobID string) (*Job, error)
 	DeleteJobByID(ctx context.Context, jobID string) error
 	GetJobResultsByID(ctx context.Context, jobID string) ([]*JobResult, error)
-	// UpdateJobStatus(ctx context.Context, jobID string, status string) (*Job, error)
+	UpdateJobStatus(ctx context.Context, jobID string, status string) (*Job, error)
 	// UploadImage(ctx context.Context, imageReader io.Reader, imageFilename string) (string, error)
-	// GetPresignedURL(ctx context.Context, imageKey string) (string, error)
+	GetPresignedURL(ctx context.Context, imageKey string) (string, error)
 }
 
 type JobRepository interface {
 	CreateJob(ctx context.Context, id string, jobType string, modelConfig map[string]interface{}, imageKey string, status string) (*JobModel, error)
-	GetJobs(ctx context.Context) ([]JobModel, error)
+	GetJobs(ctx context.Context) ([]*JobModel, error)
 	GetJobByID(ctx context.Context, id string) (*JobModel, error)
 	DeleteJobByID(ctx context.Context, id string) error
 	UpdateJobStatus(ctx context.Context, id string, status string) (*JobModel, error)
@@ -41,7 +41,7 @@ type JobRepository interface {
 
 type JobResultRepository interface {
 	CreateResult(ctx context.Context, id string, jobID string, imageKey string) (*JobResultModel, error)
-	GetResultsByJobID(ctx context.Context, jobID string) ([]JobResultModel, error)
+	GetResultsByJobID(ctx context.Context, jobID string) ([]*JobResultModel, error)
 }
 
 type JobObjectStorage interface {
