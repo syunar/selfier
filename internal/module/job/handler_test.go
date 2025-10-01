@@ -79,6 +79,19 @@ func (s *mockJobService) GetJobResultsByID(ctx context.Context, jobID string) ([
 	return args.Get(0).([]*JobResult), args.Error(1)
 }
 
+func (s *mockJobService) UpdateJobStatus(ctx context.Context, jobID string, status string) (*Job, error) {
+	args := s.Called(ctx, jobID, status)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*Job), args.Error(1)
+}
+
+func (s *mockJobService) GetPresignedURL(ctx context.Context, imageKey string) (string, error) {
+	args := s.Called(ctx, imageKey)
+	return args.String(0), args.Error(1)
+}
+
 // --------------------
 // Test Helpers
 // -------------------

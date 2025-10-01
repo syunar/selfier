@@ -58,10 +58,10 @@ func main() {
 	// 4. Initialize dependencies
 	jobRepository, _ := job.NewJobRepositoryGorm(db)
 	jobResultRepository, _ := job.NewJobResultRepositoryGorm(db)
-	jobEventPublisher := job.NewJobEventPublisherInngest()
-	jobObjectStorage := job.NewJobObjectStorageAWS()
+	// jobEventPublisher := job.NewJobEventPublisherInngest()
+	// jobObjectStorage := job.NewJobObjectStorageAWS()
 
-	jobService := job.NewJobService(jobRepository, jobResultRepository, jobEventPublisher, jobObjectStorage)
+	jobService := job.NewJobService(jobRepository, jobResultRepository)
 	jobHTTPHandler := job.NewJobHTTPHandler(jobService)
 
 	// 5. Start the HTTP server

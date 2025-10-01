@@ -60,6 +60,7 @@ type JobResult struct {
 	ID                string    `json:"id" example:"abc"`
 	JobID             string    `json:"job_id" example:"123"`
 	ImagePresignedURL string    `json:"image_presigned_url" example:"https://example.com/image.jpg"`
+	ImageKey          string    `json:"image_key" example:"jobs/123/image.jpg"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }
@@ -81,6 +82,16 @@ func GetJobFromModel(jobModel *JobModel) (*Job, error) {
 		Status:      jobModel.Status,
 		CreatedAt:   jobModel.CreatedAt,
 		UpdatedAt:   jobModel.UpdatedAt,
+	}, nil
+}
+
+func GetJobResultFromModel(jobResultModel *JobResultModel) (*JobResult, error) {
+	return &JobResult{ //nolint:exhaustruct
+		ID:        jobResultModel.ID,
+		JobID:     jobResultModel.JobID,
+		ImageKey:  jobResultModel.ImageKey,
+		CreatedAt: jobResultModel.CreatedAt,
+		UpdatedAt: jobResultModel.UpdatedAt,
 	}, nil
 }
 
