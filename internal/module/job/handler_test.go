@@ -71,12 +71,12 @@ func (s *mockJobService) DeleteJobByID(ctx context.Context, jobID string) error 
 	return args.Error(0)
 }
 
-func (s *mockJobService) GetJobResultsByID(ctx context.Context, jobID string) ([]*JobResult, error) {
+func (s *mockJobService) GetJobImagesByID(ctx context.Context, jobID string) ([]*JobImage, error) {
 	args := s.Called(ctx, jobID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*JobResult), args.Error(1)
+	return args.Get(0).([]*JobImage), args.Error(1)
 }
 
 func (s *mockJobService) UpdateJobStatus(ctx context.Context, jobID string, status string) (*Job, error) {
@@ -87,8 +87,13 @@ func (s *mockJobService) UpdateJobStatus(ctx context.Context, jobID string, stat
 	return args.Get(0).(*Job), args.Error(1)
 }
 
-func (s *mockJobService) GetPresignedURL(ctx context.Context, imageKey string) (string, error) {
-	args := s.Called(ctx, imageKey)
+func (s *mockJobService) UploadImage(ctx context.Context, imageReader io.Reader, imageFilename string) (string, error) {
+	args := s.Called(ctx, imageReader, imageFilename)
+	return args.String(0), args.Error(1)
+}
+
+func (s *mockJobService) GetPresignedURL(ctx context.Context, jobID string, imageID string) (string, error) {
+	args := s.Called(ctx, jobID, imageID)
 	return args.String(0), args.Error(1)
 }
 
@@ -137,7 +142,6 @@ func TestJobHTTPHandler_CreateJob(t *testing.T) {
 		ID:          "123",
 		Type:        testJobType,
 		ModelConfig: map[string]interface{}{"prompt": "a photo of a person"},
-		ImageKey:    "jobs/123/image.jpg",
 		Status:      StatusPending,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
@@ -271,7 +275,6 @@ func TestJobHTTPHandler_CreateJob(t *testing.T) {
 				assert.Equal(t, mockJob.ID, actual.ID)
 				assert.Equal(t, mockJob.Type, actual.Type)
 				assert.Equal(t, mockJob.ModelConfig, actual.ModelConfig)
-				assert.Equal(t, mockJob.ImageKey, actual.ImageKey)
 				assert.Equal(t, mockJob.Status, actual.Status)
 				assert.False(t, actual.CreatedAt.IsZero())
 				assert.False(t, actual.UpdatedAt.IsZero())
@@ -479,19 +482,19 @@ func TestJobHTTPHandler_DeleteJobByID(t *testing.T) {
 	}
 }
 
-func TestJobHTTPHandler_GetJobResultsByID(t *testing.T) {
+func TestJobHTTPHandler_GetJobImagesByID(t *testing.T) {
 
 	//nolint:exhaustruct
-	jobResult1 := &JobResult{
-		ID:                "1",
-		JobID:             "1",
-		ImagePresignedURL: "https://example.com/image_1.jpg",
+	JobImage1 := &JobImage{
+		ID:       "1",
+		JobID:    "1",
+		ImageKey: "https://example.com/image_1.jpg",
 	}
 	//nolint:exhaustruct
-	jobResult2 := &JobResult{
-		ID:                "2",
-		JobID:             "1",
-		ImagePresignedURL: "https://example.com/image_2.jpg",
+	JobImage2 := &JobImage{
+		ID:       "2",
+		JobID:    "1",
+		ImageKey: "https://example.com/image_2.jpg",
 	}
 
 	cases := []struct {
@@ -499,32 +502,32 @@ func TestJobHTTPHandler_GetJobResultsByID(t *testing.T) {
 		path       string
 		setupFunc  func(t *testing.T, mockService *mockJobService)
 		wantStatus int
-		want       []*JobResult
+		want       []*JobImage
 	}{
 		{
 			name:       "success",
 			wantStatus: http.StatusOK,
-			path:       "/jobs/1/results",
+			path:       "/jobs/1/images",
 			setupFunc: func(t *testing.T, mockService *mockJobService) {
-				mockService.On("GetJobResultsByID", mock.Anything, mock.Anything).Return([]*JobResult{jobResult1, jobResult2}, nil).Once()
+				mockService.On("GetJobImagesByID", mock.Anything, mock.Anything).Return([]*JobImage{JobImage1, JobImage2}, nil).Once()
 			},
-			want: []*JobResult{jobResult1, jobResult2},
+			want: []*JobImage{JobImage1, JobImage2},
 		},
 		{
 			name:       "service error",
 			wantStatus: http.StatusInternalServerError,
-			path:       "/jobs/1/results",
+			path:       "/jobs/1/images",
 			setupFunc: func(t *testing.T, mockService *mockJobService) {
-				mockService.On("GetJobResultsByID", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
+				mockService.On("GetJobImagesByID", mock.Anything, mock.Anything).Return(nil, assert.AnError).Once()
 			},
 			want: nil,
 		},
 		{
 			name:       "not found",
 			wantStatus: http.StatusNotFound,
-			path:       "/jobs/1/results",
+			path:       "/jobs/1/images",
 			setupFunc: func(t *testing.T, mockService *mockJobService) {
-				mockService.On("GetJobResultsByID", mock.Anything, mock.Anything).Return(nil, ErrNotFound).Once()
+				mockService.On("GetJobImagesByID", mock.Anything, mock.Anything).Return(nil, ErrNotFound).Once()
 			},
 			want: nil,
 		},
@@ -542,13 +545,13 @@ func TestJobHTTPHandler_GetJobResultsByID(t *testing.T) {
 			router, api := setupRouter()
 
 			huma.Register(api, huma.Operation{ //nolint:exhaustruct
-				OperationID:   "get-job-results-by-id",
+				OperationID:   "get-job-images-by-id",
 				Method:        http.MethodGet,
-				Path:          "/jobs/{id}/results",
-				Summary:       "Get job results by id",
+				Path:          "/jobs/{id}/images",
+				Summary:       "Get job images by id",
 				Tags:          []string{"Jobs"},
 				DefaultStatus: http.StatusOK,
-			}, jobHandler.GetJobResultsByID)
+			}, jobHandler.GetJobImagesByID)
 
 			req, _ := http.NewRequest("GET", tc.path, nil)
 			w := httptest.NewRecorder()
@@ -557,11 +560,63 @@ func TestJobHTTPHandler_GetJobResultsByID(t *testing.T) {
 			assert.Equal(t, tc.wantStatus, w.Code)
 
 			if tc.wantStatus == http.StatusOK {
-				var actual []*JobResult
+				var actual []*JobImage
 				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &actual))
 				assert.Equal(t, tc.want, actual)
 			}
 			service.AssertExpectations(t)
 		})
+	}
+}
+
+func TestJobHTTPHandler_GetPresignedURL(t *testing.T) {
+	testCases := []struct {
+		name           string
+		expected       GetPresignedURLOutputBody
+		expectedStatus int
+		setupFunc      func(t *testing.T) *mockJobService
+		path           string
+	}{
+		{
+			name:           "success",
+			expected:       GetPresignedURLOutputBody{URL: "https://example.com"},
+			expectedStatus: http.StatusOK,
+			setupFunc: func(t *testing.T) *mockJobService {
+				service := newMockJobService()
+				service.On("GetPresignedURL", mock.Anything, mock.Anything, mock.Anything).Return("https://example.com", nil).Once()
+				return service
+			},
+			path: "/jobs/123/images/abc",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockService := tc.setupFunc(t)
+			jobHandler := NewJobHTTPHandler(mockService)
+
+			router, api := setupRouter()
+			huma.Register(api, huma.Operation{ //nolint:exhaustruct
+				OperationID: "get-presigned-url",
+				Method:      http.MethodGet,
+				Path:        "/jobs/{job_id}/images/{image_id}",
+				Summary:     "Create presigned url",
+				Tags:        []string{"Jobs"},
+			}, jobHandler.GetPresignedURL)
+
+			req, _ := http.NewRequest("GET", tc.path, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tc.expectedStatus, w.Code)
+
+			if tc.expectedStatus == http.StatusOK {
+				var actual GetPresignedURLOutputBody
+				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &actual))
+				assert.Equal(t, tc.expected, actual)
+			}
+			mockService.AssertExpectations(t)
+		})
+
 	}
 }

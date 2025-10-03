@@ -22,7 +22,7 @@ func NewJobRepositoryGorm(db *gorm.DB) (JobRepository, error) {
 	return &jobRepositoryGorm{db: db}, nil
 }
 
-func (r *jobRepositoryGorm) CreateJob(ctx context.Context, id string, jobType string, modelConfig map[string]interface{}, imageKey string, status string) (*JobModel, error) {
+func (r *jobRepositoryGorm) CreateJob(ctx context.Context, id string, jobType string, modelConfig map[string]interface{}, status string) (*JobModel, error) {
 
 	log := middleware.GetLogger(ctx)
 
@@ -35,7 +35,6 @@ func (r *jobRepositoryGorm) CreateJob(ctx context.Context, id string, jobType st
 	jobModel := JobModel{ //nolint:exhaustruct
 		ID:          id,
 		Type:        jobType,
-		ImageKey:    imageKey,
 		Status:      status,
 		ModelConfig: configBytes,
 	}
@@ -116,29 +115,30 @@ func (r *jobRepositoryGorm) UpdateJobStatus(ctx context.Context, id string, stat
 	return r.GetJobByID(ctx, id)
 }
 
-type jobResultRepositoryGorm struct {
+type JobImageRepositoryGorm struct {
 	db *gorm.DB
 }
 
-func NewJobResultRepositoryGorm(db *gorm.DB) (JobResultRepository, error) {
+func NewJobImageRepositoryGorm(db *gorm.DB) (JobImageRepository, error) {
 	//nolint:exhaustruct
-	err := db.AutoMigrate(&JobResultModel{})
+	err := db.AutoMigrate(&JobImageModel{})
 	if err != nil {
 		return nil, err
 	}
-	return &jobResultRepositoryGorm{db: db}, nil
+	return &JobImageRepositoryGorm{db: db}, nil
 }
 
-func (r *jobResultRepositoryGorm) CreateResult(ctx context.Context, id string, jobID string, imageKey string) (*JobResultModel, error) {
+func (r *JobImageRepositoryGorm) CreateImage(ctx context.Context, id string, jobID string, imageKey string, imageType string) (*JobImageModel, error) {
 	log := middleware.GetLogger(ctx)
 
-	jobResult := JobResultModel{ //nolint:exhaustruct
+	jobImage := &JobImageModel{ //nolint:exhaustruct
 		ID:       id,
 		JobID:    jobID,
 		ImageKey: imageKey,
+		Type:     imageType,
 	}
 
-	result := r.db.WithContext(ctx).Create(&jobResult)
+	result := r.db.WithContext(ctx).Create(jobImage)
 	if result.Error != nil {
 		log.Error("failed to create job result", slog.String("result_id", id), slog.String("job_id", jobID), slog.String("error", result.Error.Error()))
 		if result.RowsAffected == 0 && result.Error == gorm.ErrDuplicatedKey {
@@ -147,18 +147,34 @@ func (r *jobResultRepositoryGorm) CreateResult(ctx context.Context, id string, j
 		return nil, ErrInternal
 	}
 
-	return &jobResult, nil
+	return jobImage, nil
 }
 
-func (r *jobResultRepositoryGorm) GetResultsByJobID(ctx context.Context, jobID string) ([]*JobResultModel, error) {
+func (r *JobImageRepositoryGorm) GetImages(ctx context.Context, jobID string) ([]*JobImageModel, error) {
 	log := middleware.GetLogger(ctx)
-	var jobResultModels []*JobResultModel
+	var jobImageModels []*JobImageModel
 
-	result := r.db.WithContext(ctx).Where("job_id = ?", jobID).Find(&jobResultModels)
+	result := r.db.WithContext(ctx).Where("job_id = ?", jobID).Find(&jobImageModels)
 	if result.Error != nil {
 		log.Error("failed to get job results by job ID", slog.String("job_id", jobID), slog.String("error", result.Error.Error()))
 		return nil, ErrInternal
 	}
 
-	return jobResultModels, nil
+	return jobImageModels, nil
+}
+
+func (r *JobImageRepositoryGorm) GetImage(ctx context.Context, jobID string, imageID string) (*JobImageModel, error) {
+	log := middleware.GetLogger(ctx)
+	var jobImageModel JobImageModel
+
+	result := r.db.WithContext(ctx).Where("job_id = ?", jobID).Where("id = ?", imageID).First(&jobImageModel)
+	if result.Error != nil {
+		log.Error("failed to get job result by ID", slog.String("job_id", jobID), slog.String("image_id", imageID), slog.String("error", result.Error.Error()))
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, ErrInternal
+	}
+
+	return &jobImageModel, nil
 }

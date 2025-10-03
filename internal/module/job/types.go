@@ -25,6 +25,9 @@ var (
 
 	// ErrInternal is a general error for unexpected failures (e.g., marshaling, DB connection loss).
 	ErrInternal = errors.New("internal data access error")
+
+	// ErrReadFile is returned when a file cannot be read.
+	ErrReadFile = errors.New("failed to read file")
 )
 
 // ---------------
@@ -42,6 +45,11 @@ const (
 	JobTypeDeselfie = "deselfie"
 )
 
+const (
+	ImageTypeInput  = "input"
+	ImageTypeOutput = "output"
+)
+
 // ---------------
 // Domain Entities
 // ---------------
@@ -50,19 +58,18 @@ type Job struct {
 	ID          string                 `json:"id" example:"123"`
 	Type        string                 `json:"type" example:"deselfie"`
 	ModelConfig map[string]interface{} `json:"model_config" example:"{\"prompt\": \"a photo of a person\"}"`
-	ImageKey    string                 `json:"image_key" example:"jobs/123/image.jpg"`
 	Status      string                 `json:"status" example:"pending"`
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
 }
 
-type JobResult struct {
-	ID                string    `json:"id" example:"abc"`
-	JobID             string    `json:"job_id" example:"123"`
-	ImagePresignedURL string    `json:"image_presigned_url" example:"https://example.com/image.jpg"`
-	ImageKey          string    `json:"image_key" example:"jobs/123/image.jpg"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+type JobImage struct {
+	ID        string    `json:"id" example:"abc"`
+	JobID     string    `json:"job_id" example:"123"`
+	ImageKey  string    `json:"image_key" example:"jobs/123/image.jpg"`
+	Type      string    `json:"type" example:"input"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ---------------
@@ -78,20 +85,20 @@ func GetJobFromModel(jobModel *JobModel) (*Job, error) {
 		ID:          jobModel.ID,
 		Type:        jobModel.Type,
 		ModelConfig: configMap,
-		ImageKey:    jobModel.ImageKey,
 		Status:      jobModel.Status,
 		CreatedAt:   jobModel.CreatedAt,
 		UpdatedAt:   jobModel.UpdatedAt,
 	}, nil
 }
 
-func GetJobResultFromModel(jobResultModel *JobResultModel) (*JobResult, error) {
-	return &JobResult{ //nolint:exhaustruct
-		ID:        jobResultModel.ID,
-		JobID:     jobResultModel.JobID,
-		ImageKey:  jobResultModel.ImageKey,
-		CreatedAt: jobResultModel.CreatedAt,
-		UpdatedAt: jobResultModel.UpdatedAt,
+func GetJobImageFromModel(jobImageModel *JobImageModel) (*JobImage, error) {
+	return &JobImage{ //nolint:exhaustruct
+		ID:        jobImageModel.ID,
+		JobID:     jobImageModel.JobID,
+		ImageKey:  jobImageModel.ImageKey,
+		Type:      jobImageModel.Type,
+		CreatedAt: jobImageModel.CreatedAt,
+		UpdatedAt: jobImageModel.UpdatedAt,
 	}, nil
 }
 
@@ -107,40 +114,59 @@ type CreateJobRawBody struct {
 	Image       huma.FormFile `form:"image" required:"true"`
 }
 
+type GetPresignedURLOutputBody struct {
+	URL string `json:"url"`
+}
+
 // ---- Input and Output ----
 
 type CreateJobInput struct {
 	RawBody huma.MultipartFormFiles[CreateJobRawBody]
 }
 
+type GetPresignedURLInput struct {
+	ID    string `path:"image_id" required:"true" doc:"Image ID" example:"f6b57be8-aa17-4e46-8cca-396cb7f977e9"`
+	JobID string `path:"job_id" required:"true" doc:"Job ID" example:"052ef2f5-28dd-44e6-8345-e8fc11235d1c"`
+}
+
+type GetPresignedURLOutput struct {
+	Body GetPresignedURLOutputBody `json:"body"`
+}
+
 type JobOutput struct {
-	Body Job `json:"body"`
+	Body *Job `json:"body"`
 }
 
 type JobsOutput struct {
 	Body []*Job `json:"body"`
 }
 
-type JobResultsOutput struct {
-	Body []*JobResult `json:"body"`
+type JobImagesOutput struct {
+	Body []*JobImage `json:"body"`
 }
 
 // ---------------
 // Repository Models
 // ---------------
 
+type Model struct {
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
 type JobModel struct {
-	gorm.Model
+	Model
 	ID          string         `gorm:"type:uuid;primaryKey"`
 	Type        string         `gorm:"type:string"`
 	ModelConfig datatypes.JSON `gorm:"type:jsonb"`
-	ImageKey    string         `gorm:"type:string"`
 	Status      string         `gorm:"type:varchar(20);not null;default:'pending'"`
 }
 
-type JobResultModel struct {
-	gorm.Model
-	ID       string `gorm:"type:uuild;primaryKey"`
+type JobImageModel struct {
+	Model
+	ID       string `gorm:"type:uuid;primaryKey"`
 	JobID    string `gorm:"type:uuid;not null;index"`
 	ImageKey string `gorm:"type:string;not null"`
+	Type     string `gorm:"type:string;not null"`
 }

@@ -84,7 +84,6 @@ func TestJobRepositoryGorm_CreateJob(t *testing.T) {
 				ID:          "123",
 				Type:        JobTypeDeselfie,
 				ModelConfig: datatypes.JSON(configBytes),
-				ImageKey:    "jobs/123/image.jpg",
 				Status:      StatusPending,
 			},
 			wantErr: nil,
@@ -97,7 +96,7 @@ func TestJobRepositoryGorm_CreateJob(t *testing.T) {
 			imageKey:    "jobs/123/image.jpg",
 			status:      StatusPending,
 			setupFunc: func(t *testing.T, repo JobRepository, db *gorm.DB) {
-				_, err := repo.CreateJob(t.Context(), "123", "ignore", map[string]interface{}{"p": "v"}, "ignore", "ignore")
+				_, err := repo.CreateJob(t.Context(), "123", "ignore", map[string]interface{}{"p": "v"}, "ignore")
 				require.NoError(t, err)
 			},
 			want:    nil,
@@ -141,7 +140,7 @@ func TestJobRepositoryGorm_CreateJob(t *testing.T) {
 				c.setupFunc(t, repo, db)
 			}
 
-			got, err := repo.CreateJob(t.Context(), c.id, c.jobType, c.modelConfig, c.imageKey, c.status)
+			got, err := repo.CreateJob(t.Context(), c.id, c.jobType, c.modelConfig, c.status)
 
 			if c.wantErr != nil {
 				assert.ErrorIs(t, err, c.wantErr)
@@ -151,7 +150,6 @@ func TestJobRepositoryGorm_CreateJob(t *testing.T) {
 				assert.NotNil(t, got)
 				assert.Equal(t, c.want.ID, got.ID)
 				assert.Equal(t, c.want.Type, got.Type)
-				assert.Equal(t, c.want.ImageKey, got.ImageKey)
 				assert.Equal(t, c.want.Status, got.Status)
 				assert.JSONEq(t, string(c.want.ModelConfig), string(got.ModelConfig))
 				assert.NotEmpty(t, got.CreatedAt)
@@ -179,22 +177,20 @@ func TestJobRepository_GetJobs(t *testing.T) {
 					ID:          "123",
 					Type:        JobTypeDeselfie,
 					ModelConfig: datatypes.JSON(configBytes),
-					ImageKey:    "jobs/123/image.jpg",
 					Status:      StatusPending,
 				},
 				{ //nolint:exhaustruct
 					ID:          "124",
 					Type:        JobTypeDeselfie,
 					ModelConfig: datatypes.JSON(configBytes),
-					ImageKey:    "jobs/124/image.jpg",
 					Status:      StatusPending,
 				},
 			},
 			wantErr: nil,
 			setupFunc: func(t *testing.T, repo JobRepository, db *gorm.DB) {
-				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, configData, "jobs/123/image.jpg", StatusPending)
+				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, configData, StatusPending)
 				require.NoError(t, err)
-				_, err = repo.CreateJob(t.Context(), "124", JobTypeDeselfie, configData, "jobs/124/image.jpg", StatusPending)
+				_, err = repo.CreateJob(t.Context(), "124", JobTypeDeselfie, configData, StatusPending)
 				require.NoError(t, err)
 			},
 		},
@@ -229,7 +225,6 @@ func TestJobRepository_GetJobs(t *testing.T) {
 				for i, want := range c.want {
 					assert.Equal(t, want.ID, got[i].ID)
 					assert.Equal(t, want.Type, got[i].Type)
-					assert.Equal(t, want.ImageKey, got[i].ImageKey)
 					assert.Equal(t, want.Status, got[i].Status)
 					assert.JSONEq(t, string(want.ModelConfig), string(got[i].ModelConfig))
 					assert.NotEmpty(t, got[i].CreatedAt)
@@ -257,12 +252,11 @@ func TestJobRepository_GetJobByID(t *testing.T) {
 				ID:          "123",
 				Type:        JobTypeDeselfie,
 				ModelConfig: datatypes.JSON(configBytes),
-				ImageKey:    "jobs/123/image.jpg",
 				Status:      StatusPending,
 			},
 			wantErr: nil,
 			setupFunc: func(t *testing.T, repo JobRepository, db *gorm.DB) {
-				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, configData, "jobs/123/image.jpg", StatusPending)
+				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, configData, StatusPending)
 				require.NoError(t, err)
 			},
 		},
@@ -272,7 +266,7 @@ func TestJobRepository_GetJobByID(t *testing.T) {
 			want:    nil,
 			wantErr: ErrNotFound,
 			setupFunc: func(t *testing.T, repo JobRepository, db *gorm.DB) {
-				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, configData, "jobs/123/image.jpg", StatusPending)
+				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, configData, StatusPending)
 				require.NoError(t, err)
 			},
 		},
@@ -307,7 +301,6 @@ func TestJobRepository_GetJobByID(t *testing.T) {
 				assert.NotNil(t, got)
 				assert.Equal(t, c.want.ID, got.ID)
 				assert.Equal(t, c.want.Type, got.Type)
-				assert.Equal(t, c.want.ImageKey, got.ImageKey)
 				assert.Equal(t, c.want.Status, got.Status)
 				assert.JSONEq(t, string(c.want.ModelConfig), string(got.ModelConfig))
 				assert.NotEmpty(t, got.CreatedAt)
@@ -330,7 +323,7 @@ func TestJobRepository_DeleteJobByID(t *testing.T) {
 			id:      "123",
 			wantErr: nil,
 			setupFunc: func(t *testing.T, repo JobRepository, db *gorm.DB) {
-				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, configData, "jobs/123/image.jpg", StatusPending)
+				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, configData, StatusPending)
 				require.NoError(t, err)
 			},
 		},
@@ -338,7 +331,7 @@ func TestJobRepository_DeleteJobByID(t *testing.T) {
 			name: "failed_not_found_delete_job_by_id",
 			id:   "124",
 			setupFunc: func(t *testing.T, repo JobRepository, db *gorm.DB) {
-				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, configData, "jobs/123/image.jpg", StatusPending)
+				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, configData, StatusPending)
 				require.NoError(t, err)
 			},
 			wantErr: nil,
@@ -396,7 +389,7 @@ func TestJobRepository_UpdateJobStatus(t *testing.T) {
 			},
 			wantErr: nil,
 			setupFunc: func(t *testing.T, repo JobRepository, db *gorm.DB) {
-				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, map[string]interface{}{"prompt": "a photo of a person"}, "jobs/123/image.jpg", StatusPending)
+				_, err := repo.CreateJob(t.Context(), "123", JobTypeDeselfie, map[string]interface{}{"prompt": "a photo of a person"}, StatusPending)
 				require.NoError(t, err)
 			},
 		},
@@ -445,11 +438,11 @@ func TestJobRepository_UpdateJobStatus(t *testing.T) {
 
 }
 
-func TestNewJobResultRepositoryGorm(t *testing.T) {
+func TestNewJobImageRepositoryGorm(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		db := setupMockDB(t)
 
-		repo, err := NewJobResultRepositoryGorm(db)
+		repo, err := NewJobImageRepositoryGorm(db)
 
 		assert.NoError(t, err, "should not return error on successful migration")
 		assert.NotNil(t, repo, "repository should not be nil")
@@ -462,31 +455,31 @@ func TestNewJobResultRepositoryGorm(t *testing.T) {
 		require.NoError(t, err, "expected to get sqlDB without error")
 		sqlDB.Close()
 
-		repo, err := NewJobResultRepositoryGorm(db)
+		repo, err := NewJobImageRepositoryGorm(db)
 
 		assert.Error(t, err, "should return error when migration fails")
 		assert.Nil(t, repo, "repository should be nil on migration failure")
 	})
 }
 
-func TestJobResultRepositoryGorm_CreateResult(t *testing.T) {
+func TestJobImageRepositoryGorm_CreateImage(t *testing.T) {
 
 	//nolint:exhaustruct
 	cases := []struct {
 		name      string
-		want      *JobResultModel
+		want      *JobImageModel
 		wantErr   error
 		id        string
 		jobID     string
 		imageKey  string
-		setupFunc func(t *testing.T, repo JobResultRepository, db *gorm.DB)
+		setupFunc func(t *testing.T, repo JobImageRepository, db *gorm.DB)
 	}{
 		{
 			name:     "success",
 			id:       "abc",
 			imageKey: "jobs/123/abc.jpg",
 			jobID:    "123",
-			want: &JobResultModel{
+			want: &JobImageModel{
 				ID:       "abc",
 				JobID:    "123",
 				ImageKey: "jobs/123/abc.jpg",
@@ -500,7 +493,7 @@ func TestJobResultRepositoryGorm_CreateResult(t *testing.T) {
 			jobID:    "123",
 			want:     nil,
 			wantErr:  ErrInternal,
-			setupFunc: func(t *testing.T, repo JobResultRepository, db *gorm.DB) {
+			setupFunc: func(t *testing.T, repo JobImageRepository, db *gorm.DB) {
 				sqlDB, _ := db.DB()
 				sqlDB.Close()
 			},
@@ -512,8 +505,8 @@ func TestJobResultRepositoryGorm_CreateResult(t *testing.T) {
 			imageKey: "jobs/123/abc.jpg",
 			wantErr:  ErrConflict,
 			want:     nil,
-			setupFunc: func(t *testing.T, repo JobResultRepository, db *gorm.DB) {
-				_, err := repo.CreateResult(t.Context(), "abc", "123", "jobs/123/abc.jpg")
+			setupFunc: func(t *testing.T, repo JobImageRepository, db *gorm.DB) {
+				_, err := repo.CreateImage(t.Context(), "abc", "123", "jobs/123/abc.jpg", ImageTypeInput)
 				require.NoError(t, err)
 			},
 		},
@@ -522,14 +515,14 @@ func TestJobResultRepositoryGorm_CreateResult(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			db := setupMockDB(t)
-			repo, err := NewJobResultRepositoryGorm(db)
-			require.NoError(t, err, "NewJobResultRepositoryGorm returned error")
+			repo, err := NewJobImageRepositoryGorm(db)
+			require.NoError(t, err, "NewJobImageRepositoryGorm returned error")
 
 			if c.setupFunc != nil {
 				c.setupFunc(t, repo, db)
 			}
 
-			got, err := repo.CreateResult(t.Context(), c.id, c.jobID, c.imageKey)
+			got, err := repo.CreateImage(t.Context(), c.id, c.jobID, c.imageKey, ImageTypeInput)
 			if c.wantErr != nil {
 				assert.ErrorIs(t, err, c.wantErr)
 				assert.Nil(t, got)
@@ -543,18 +536,18 @@ func TestJobResultRepositoryGorm_CreateResult(t *testing.T) {
 	}
 }
 
-func TestJobResultRepositoryGorm_GetResultsByJobID(t *testing.T) {
+func TestJobImageRepositoryGorm_GetResultsByJobID(t *testing.T) {
 	cases := []struct {
 		name      string
 		jobID     string
-		want      []JobResultModel
+		want      []JobImageModel
 		wantErr   error
-		setupFunc func(t *testing.T, repo JobResultRepository, db *gorm.DB)
+		setupFunc func(t *testing.T, repo JobImageRepository, db *gorm.DB)
 	}{
 		{
 			name:  "success",
 			jobID: "123",
-			want: []JobResultModel{
+			want: []JobImageModel{
 				{ //nolint:exhaustruct
 					ID:       "abc",
 					JobID:    "123",
@@ -567,17 +560,17 @@ func TestJobResultRepositoryGorm_GetResultsByJobID(t *testing.T) {
 				},
 			},
 			wantErr: nil,
-			setupFunc: func(t *testing.T, repo JobResultRepository, db *gorm.DB) {
-				_, err := repo.CreateResult(t.Context(), "abc", "123", "jobs/123/abc.jpg")
+			setupFunc: func(t *testing.T, repo JobImageRepository, db *gorm.DB) {
+				_, err := repo.CreateImage(t.Context(), "abc", "123", "jobs/123/abc.jpg", ImageTypeInput)
 				require.NoError(t, err)
-				_, err = repo.CreateResult(t.Context(), "def", "123", "jobs/123/def.jpg")
+				_, err = repo.CreateImage(t.Context(), "def", "123", "jobs/123/def.jpg", ImageTypeInput)
 				require.NoError(t, err)
 			},
 		},
 		{ //nolint:exhaustruct
 			name:    "failed_not_found",
 			jobID:   "123",
-			want:    []JobResultModel{},
+			want:    []JobImageModel{},
 			wantErr: nil,
 		},
 		{
@@ -585,7 +578,7 @@ func TestJobResultRepositoryGorm_GetResultsByJobID(t *testing.T) {
 			jobID:   "123",
 			want:    nil,
 			wantErr: ErrInternal,
-			setupFunc: func(t *testing.T, repo JobResultRepository, db *gorm.DB) {
+			setupFunc: func(t *testing.T, repo JobImageRepository, db *gorm.DB) {
 				sqlDB, _ := db.DB()
 				sqlDB.Close()
 			},
@@ -595,14 +588,14 @@ func TestJobResultRepositoryGorm_GetResultsByJobID(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			db := setupMockDB(t)
-			repo, err := NewJobResultRepositoryGorm(db)
-			require.NoError(t, err, "NewJobResultRepositoryGorm returned error")
+			repo, err := NewJobImageRepositoryGorm(db)
+			require.NoError(t, err, "NewJobImageRepositoryGorm returned error")
 
 			if c.setupFunc != nil {
 				c.setupFunc(t, repo, db)
 			}
 
-			got, err := repo.GetResultsByJobID(t.Context(), c.jobID)
+			got, err := repo.GetImages(t.Context(), c.jobID)
 			if c.wantErr != nil {
 				assert.ErrorIs(t, err, c.wantErr)
 				assert.Nil(t, got)
