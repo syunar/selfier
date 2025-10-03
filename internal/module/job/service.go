@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log/slog"
 	"selfier/pkg/middleware"
@@ -11,18 +10,18 @@ import (
 )
 
 type jobServiceImpl struct {
-	jobRepository       JobRepository
-	jobResultRepository JobResultRepository
-	// jobObjectStorage    JobObjectStorage
+	jobRepository      JobRepository
+	jobImageRepository JobImageRepository
+	jobObjectStorage   JobObjectStorage
 	// jobEventPublisher   JobEventPublisher
 }
 
-func NewJobService(jobRepository JobRepository, jobResultRepository JobResultRepository) JobService {
+func NewJobService(jobRepository JobRepository, jobImageRepository JobImageRepository, jobObjectStorage JobObjectStorage) JobService {
 	return &jobServiceImpl{
-		jobRepository:       jobRepository,
-		jobResultRepository: jobResultRepository,
+		jobRepository:      jobRepository,
+		jobImageRepository: jobImageRepository,
+		jobObjectStorage:   jobObjectStorage,
 		// jobEventPublisher:   jobEventPublisher,
-		// jobObjectStorage:    jobObjectStorage,
 	}
 }
 
@@ -30,15 +29,30 @@ func (s *jobServiceImpl) CreateJob(ctx context.Context, jobType string, modelCon
 
 	log := middleware.GetLogger(ctx)
 
-	id := uuid.New().String()
+	jobID := uuid.New().String()
+	imageKey, err := s.UploadImage(ctx, imageReader, imageFilename)
+	if err != nil {
+		log.Error("failed to upload image", slog.String("error", err.Error()))
+		if err == ErrReadFile {
+			return nil, ErrReadFile
+		}
+		return nil, ErrInternal
+	}
 
-	// TODO
-	// s.jobObjectStorage.UploadImage()
-	imageKey := "jobs/" + id + "/" + imageFilename
-
-	jobModel, err := s.jobRepository.CreateJob(ctx, id, jobType, modelConfig, imageKey, StatusPending)
+	jobModel, err := s.jobRepository.CreateJob(ctx, jobID, jobType, modelConfig, StatusPending)
 	if err != nil {
 		log.Error("failed to create job", slog.String("error", err.Error()))
+		if err == ErrConflict {
+			return nil, ErrConflict
+		}
+		return nil, ErrInternal
+	}
+
+	imageID := uuid.New().String()
+	_, err = s.jobImageRepository.CreateImage(ctx, imageID, jobModel.ID, imageKey, ImageTypeInput)
+
+	if err != nil {
+		log.Error("failed to create image", slog.String("error", err.Error()))
 		if err == ErrConflict {
 			return nil, ErrConflict
 		}
@@ -115,37 +129,45 @@ func (s *jobServiceImpl) DeleteJobByID(ctx context.Context, jobID string) error 
 	return nil
 }
 
-func (s *jobServiceImpl) GetJobResultsByID(ctx context.Context, jobID string) ([]*JobResult, error) {
+func (s *jobServiceImpl) GetJobImagesByID(ctx context.Context, jobID string) ([]*JobImage, error) {
 
 	log := middleware.GetLogger(ctx)
 
-	jobResultModels, err := s.jobResultRepository.GetResultsByJobID(ctx, jobID)
+	JobImageModels, err := s.jobImageRepository.GetImages(ctx, jobID)
 	if err != nil {
 		log.Error("failed to get job results by job ID", slog.String("job_id", jobID), slog.String("error", err.Error()))
 		return nil, ErrInternal
 	}
 
-	jobResults := make([]*JobResult, len(jobResultModels))
-	for i, jobResultModel := range jobResultModels {
-		jobResult, _ := GetJobResultFromModel(jobResultModel)
-		jobResults[i] = jobResult
+	JobImages := make([]*JobImage, len(JobImageModels))
+	for i, JobImageModel := range JobImageModels {
+		JobImage, _ := GetJobImageFromModel(JobImageModel)
+		JobImages[i] = JobImage
 	}
 
-	// TODO
-	// get presigned url
+	return JobImages, nil
+}
 
-	// attach presigned url
+func (s *jobServiceImpl) GetJobImageByID(ctx context.Context, jobID string, imageID string) (*JobImage, error) {
 
-	// TODO
-	for i, jobResult := range jobResults {
-		jobResults[i].ImagePresignedURL, _ = s.GetPresignedURL(ctx, jobResult.ImageKey)
-		// if err != nil {
-		// 	log.Error("failed to get presigned url", slog.String("error", err.Error()))
-		// 	return nil, err
-		// }
+	log := middleware.GetLogger(ctx)
+
+	JobImageModel, err := s.jobImageRepository.GetImage(ctx, jobID, imageID)
+	if err != nil {
+		log.Error("failed to get job result by ID", slog.String("job_id", jobID), slog.String("image_id", imageID), slog.String("error", err.Error()))
+		if err == ErrNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, ErrInternal
 	}
 
-	return jobResults, nil
+	JobImage, err := GetJobImageFromModel(JobImageModel)
+	if err != nil {
+		log.Error("failed to get job image from model", slog.String("error", err.Error()))
+		return nil, ErrInternal
+	}
+
+	return JobImage, nil
 }
 
 func (s *jobServiceImpl) UpdateJobStatus(ctx context.Context, jobID string, status string) (*Job, error) {
@@ -169,12 +191,38 @@ func (s *jobServiceImpl) UpdateJobStatus(ctx context.Context, jobID string, stat
 	return job, nil
 }
 
-// func (s *jobServiceImpl) UploadImage(ctx context.Context, imageReader io.Reader, imageFilename string) (string, error) {
-// 	// s.jobObjectStorage.UploadImage()
-// 	return "", nil
-// }
+func (s *jobServiceImpl) UploadImage(ctx context.Context, imageReader io.Reader, imageFilename string) (string, error) {
+	log := middleware.GetLogger(ctx)
 
-func (s *jobServiceImpl) GetPresignedURL(ctx context.Context, imageKey string) (string, error) {
-	// s.jobObjectStorage.GetPresignedURL()
-	return fmt.Sprintf("https://s3.amazonaws.com/%s", imageKey), nil
+	fileKey, err := s.jobObjectStorage.UploadImage(ctx, imageFilename, imageReader)
+	if err != nil {
+		log.Error("failed to upload image", slog.String("error", err.Error()))
+		if err == ErrReadFile {
+			return "", ErrReadFile
+		}
+		return "", ErrInternal
+	}
+	return fileKey, nil
+}
+
+func (s *jobServiceImpl) GetPresignedURL(ctx context.Context, jobID string, imageID string) (string, error) {
+
+	log := middleware.GetLogger(ctx)
+
+	jobImageModel, err := s.jobImageRepository.GetImage(ctx, jobID, imageID)
+	if err != nil {
+		log.Error("failed to get job image by ID", slog.String("job_id", jobID), slog.String("image_id", imageID), slog.String("error", err.Error()))
+		if err == ErrNotFound {
+			return "", ErrNotFound
+		}
+		return "", ErrInternal
+	}
+
+	presignedURL, err := s.jobObjectStorage.GetPresignedURL(ctx, jobImageModel.ImageKey)
+	if err != nil {
+		log.Error("failed to create presigned url", slog.String("error", err.Error()))
+		return "", ErrInternal
+	}
+
+	return presignedURL, nil
 }

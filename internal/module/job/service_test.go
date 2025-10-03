@@ -20,8 +20,8 @@ func newMockJobRepo() *mockJobRepo {
 	return &mockJobRepo{}
 }
 
-func (m *mockJobRepo) CreateJob(ctx context.Context, id string, jobType string, modelConfig map[string]interface{}, imageKey string, status string) (*JobModel, error) {
-	args := m.Called(ctx, id, jobType, modelConfig, imageKey, status)
+func (m *mockJobRepo) CreateJob(ctx context.Context, id string, jobType string, modelConfig map[string]interface{}, status string) (*JobModel, error) {
+	args := m.Called(ctx, id, jobType, modelConfig, status)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -57,29 +57,61 @@ func (m *mockJobRepo) UpdateJobStatus(ctx context.Context, id string, status str
 	return args.Get(0).(*JobModel), args.Error(1)
 }
 
-type mockJobResultRepo struct {
+type mockJobImageRepo struct {
 	mock.Mock
 }
 
 //nolint:exhaustruct
-func newMockJobResultRepo() *mockJobResultRepo {
-	return &mockJobResultRepo{}
+func newMockJobImageRepo() *mockJobImageRepo {
+	return &mockJobImageRepo{}
 }
 
-func (m *mockJobResultRepo) GetResultsByJobID(ctx context.Context, id string) ([]*JobResultModel, error) {
-	args := m.Called(ctx, id)
+func (m *mockJobImageRepo) GetImages(ctx context.Context, jobID string) ([]*JobImageModel, error) {
+	args := m.Called(ctx, jobID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*JobResultModel), args.Error(1)
+	return args.Get(0).([]*JobImageModel), args.Error(1)
 }
 
-func (m *mockJobResultRepo) CreateResult(ctx context.Context, id string, jobID string, imageKey string) (*JobResultModel, error) {
-	args := m.Called(ctx, id, jobID, imageKey)
+func (m *mockJobImageRepo) GetImage(ctx context.Context, jobID string, imageID string) (*JobImageModel, error) {
+	args := m.Called(ctx, jobID, imageID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*JobResultModel), args.Error(1)
+	return args.Get(0).(*JobImageModel), args.Error(1)
+}
+
+func (m *mockJobImageRepo) CreateImage(ctx context.Context, imageID string, jobID string, imageKey string, imageType string) (*JobImageModel, error) {
+	args := m.Called(ctx, imageID, jobID, imageKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*JobImageModel), args.Error(1)
+}
+
+type mockJobObjectStorage struct {
+	mock.Mock
+}
+
+//nolint:exhaustruct
+func newMockJobObjectStorage() *mockJobObjectStorage {
+	return &mockJobObjectStorage{}
+}
+
+func (m *mockJobObjectStorage) GetPresignedURL(ctx context.Context, objectKey string) (string, error) {
+	args := m.Called(ctx, objectKey)
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockJobObjectStorage) UploadImage(ctx context.Context, fileName string, file io.Reader) (string, error) {
+	args := m.Called(ctx, fileName, file)
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockJobObjectStorage) DeleteImage(ctx context.Context, imageKey string) error {
+	args := m.Called(ctx, imageKey)
+	return args.Error(0)
 }
 
 func TestJobService_CreateJob(t *testing.T) {
@@ -92,7 +124,7 @@ func TestJobService_CreateJob(t *testing.T) {
 		imageFilename string
 		expected      *Job
 		expectedErr   error
-		setupFunc     func(t *testing.T, mockRepo *mockJobRepo)
+		setupFunc     func(t *testing.T, mockRepo *mockJobRepo, mockJobObject *mockJobObjectStorage, mockJobImageRepo *mockJobImageRepo)
 	}{
 		{
 			name:          "success",
@@ -106,31 +138,45 @@ func TestJobService_CreateJob(t *testing.T) {
 				ModelConfig: map[string]interface{}{
 					"prompt": "a photo of a person",
 				},
-				ImageKey:  "jobs/123/image.jpg",
 				Status:    StatusPending,
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
 			},
 			expectedErr: nil,
-			setupFunc: func(t *testing.T, mockRepo *mockJobRepo) {
-				mockRepo.On("CreateJob", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, StatusPending).Return(&JobModel{ //nolint:exhaustruct
+			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobObject *mockJobObjectStorage, mockJobImageRepo *mockJobImageRepo) {
+				mockJobObject.On("UploadImage", mock.Anything, mock.Anything, mock.Anything).Return("jobs/123/image.jpg", nil)
+
+				mockJobImageRepo.On("CreateImage", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&JobImageModel{ //nolint:exhaustruct
+					ID:       "abc",
+					JobID:    "123",
+					ImageKey: "jobs/123/image.jpg",
+					Type:     ImageTypeInput,
+				}, nil)
+
+				mockRepo.On("CreateJob", mock.Anything, mock.Anything, mock.Anything, mock.Anything, StatusPending).Return(&JobModel{ //nolint:exhaustruct
 					ID:          "123",
 					Type:        JobTypeDeselfie,
 					Status:      StatusPending,
 					ModelConfig: datatypes.JSON([]byte(`{"prompt": "a photo of a person"}`)),
-					ImageKey:    "jobs/123/image.jpg",
 				}, nil)
 			},
 		},
 		{
 			name: "failed_getjobfrommodel",
-			setupFunc: func(t *testing.T, mockRepo *mockJobRepo) {
-				mockRepo.On("CreateJob", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, StatusPending).Return(&JobModel{ //nolint:exhaustruct
+			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobObject *mockJobObjectStorage, mockJobImageRepo *mockJobImageRepo) {
+				mockJobObject.On("UploadImage", mock.Anything, mock.Anything, mock.Anything).Return("jobs/123/image.jpg", nil)
+
+				mockJobImageRepo.On("CreateImage", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&JobImageModel{ //nolint:exhaustruct
+					ID:       "abc",
+					JobID:    "123",
+					ImageKey: "jobs/123/image.jpg",
+					Type:     ImageTypeInput,
+				}, nil)
+				mockRepo.On("CreateJob", mock.Anything, mock.Anything, mock.Anything, mock.Anything, StatusPending).Return(&JobModel{ //nolint:exhaustruct
 					ID:          "123",
 					Type:        JobTypeDeselfie,
 					Status:      StatusPending,
 					ModelConfig: datatypes.JSON([]byte(`{"prompt": "missing closing brace"`)),
-					ImageKey:    "jobs/123/image.jpg",
 				}, nil)
 			},
 			expectedErr:   ErrInternal,
@@ -142,8 +188,16 @@ func TestJobService_CreateJob(t *testing.T) {
 		},
 		{
 			name: "failed_jobrepo",
-			setupFunc: func(t *testing.T, mockRepo *mockJobRepo) {
-				mockRepo.On("CreateJob", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, StatusPending).Return(nil, assert.AnError)
+			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobObject *mockJobObjectStorage, mockJobImageRepo *mockJobImageRepo) {
+				mockJobObject.On("UploadImage", mock.Anything, mock.Anything, mock.Anything).Return("jobs/123/image.jpg", nil)
+				mockJobImageRepo.On("CreateImage", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&JobImageModel{ //nolint:exhaustruct
+					ID:       "abc",
+					JobID:    "123",
+					ImageKey: "jobs/123/image.jpg",
+					Type:     ImageTypeInput,
+				}, nil)
+
+				mockRepo.On("CreateJob", mock.Anything, mock.Anything, mock.Anything, mock.Anything, StatusPending).Return(nil, assert.AnError)
 			},
 			expectedErr:   ErrInternal,
 			expected:      nil,
@@ -154,8 +208,16 @@ func TestJobService_CreateJob(t *testing.T) {
 		},
 		{
 			name: "failed_errconflict",
-			setupFunc: func(t *testing.T, mockRepo *mockJobRepo) {
-				mockRepo.On("CreateJob", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, StatusPending).Return(nil, ErrConflict)
+			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobObject *mockJobObjectStorage, mockJobImageRepo *mockJobImageRepo) {
+				mockJobObject.On("UploadImage", mock.Anything, mock.Anything, mock.Anything).Return("jobs/123/image.jpg", nil)
+				mockJobImageRepo.On("CreateImage", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&JobImageModel{ //nolint:exhaustruct
+					ID:       "abc",
+					JobID:    "123",
+					ImageKey: "jobs/123/image.jpg",
+					Type:     ImageTypeInput,
+				}, nil)
+
+				mockRepo.On("CreateJob", mock.Anything, mock.Anything, mock.Anything, mock.Anything, StatusPending).Return(nil, ErrConflict)
 			},
 			expectedErr:   ErrConflict,
 			expected:      nil,
@@ -169,16 +231,16 @@ func TestJobService_CreateJob(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockRepo := newMockJobRepo()
-			mockJobResultRepo := newMockJobResultRepo()
-			tc.setupFunc(t, mockRepo)
-			jobService := NewJobService(mockRepo, mockJobResultRepo)
+			mockJobImageRepo := newMockJobImageRepo()
+			mockJobObject := newMockJobObjectStorage()
+			tc.setupFunc(t, mockRepo, mockJobObject, mockJobImageRepo)
+			jobService := NewJobService(mockRepo, mockJobImageRepo, mockJobObject)
 			got, err := jobService.CreateJob(context.Background(), tc.jobType, tc.modelConfig, tc.imageReader, tc.imageFilename)
 			assert.Equal(t, tc.expectedErr, err)
 			if tc.expected != nil {
 				assert.Equal(t, tc.expected.ID, got.ID)
 				assert.Equal(t, tc.expected.Type, got.Type)
 				assert.Equal(t, tc.expected.ModelConfig, got.ModelConfig)
-				assert.Equal(t, tc.expected.ImageKey, got.ImageKey)
 				assert.Equal(t, tc.expected.Status, got.Status)
 			}
 			mockRepo.AssertExpectations(t)
@@ -192,7 +254,7 @@ func TestJobService_GetJobs(t *testing.T) {
 		name        string
 		expected    []*Job
 		expectedErr error
-		setupFunc   func(t *testing.T, mockRepo *mockJobRepo, mockJobResultRepo *mockJobResultRepo)
+		setupFunc   func(t *testing.T, mockRepo *mockJobRepo, mockJobImageRepo *mockJobImageRepo)
 	}{
 		{
 			name: "success",
@@ -203,28 +265,26 @@ func TestJobService_GetJobs(t *testing.T) {
 					ModelConfig: map[string]interface{}{
 						"prompt": "a photo of a person",
 					},
-					ImageKey:  "jobs/123/image.jpg",
 					Status:    StatusPending,
 					CreatedAt: time.Now(),
 					UpdatedAt: time.Now(),
 				},
 			},
 			expectedErr: nil,
-			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobResultRepo *mockJobResultRepo) {
+			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobImageRepo *mockJobImageRepo) {
 				mockRepo.On("GetJobs", mock.Anything).Return([]*JobModel{ //nolint:exhaustruct
 					{
 						ID:          "123",
 						Type:        JobTypeDeselfie,
 						Status:      StatusPending,
 						ModelConfig: datatypes.JSON([]byte(`{"prompt": "a photo of a person"}`)),
-						ImageKey:    "jobs/123/image.jpg",
 					},
 				}, nil)
 			},
 		},
 		{
 			name: "failed_jobrepo",
-			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobResultRepo *mockJobResultRepo) {
+			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobImageRepo *mockJobImageRepo) {
 				mockRepo.On("GetJobs", mock.Anything).Return(nil, assert.AnError)
 			},
 			expectedErr: ErrInternal,
@@ -232,14 +292,13 @@ func TestJobService_GetJobs(t *testing.T) {
 		},
 		{
 			name: "failed_getjobfrommodel",
-			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobResultRepo *mockJobResultRepo) {
+			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobImageRepo *mockJobImageRepo) {
 				mockRepo.On("GetJobs", mock.Anything).Return([]*JobModel{ //nolint:exhaustruct
 					{
 						ID:          "123",
 						Type:        JobTypeDeselfie,
 						Status:      StatusPending,
 						ModelConfig: datatypes.JSON([]byte(`{"prompt": "missing closing brace"`)),
-						ImageKey:    "jobs/123/image.jpg",
 					},
 				}, nil)
 			},
@@ -251,16 +310,15 @@ func TestJobService_GetJobs(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockRepo := newMockJobRepo()
-			mockJobResultRepo := newMockJobResultRepo()
-			tc.setupFunc(t, mockRepo, mockJobResultRepo)
-			jobService := NewJobService(mockRepo, mockJobResultRepo)
+			mockJobImageRepo := newMockJobImageRepo()
+			tc.setupFunc(t, mockRepo, mockJobImageRepo)
+			jobService := NewJobService(mockRepo, mockJobImageRepo, nil)
 			got, err := jobService.GetJobs(t.Context())
 			assert.Equal(t, tc.expectedErr, err)
 			if tc.expected != nil {
 				assert.Equal(t, tc.expected[0].ID, got[0].ID)
 				assert.Equal(t, tc.expected[0].Type, got[0].Type)
 				assert.Equal(t, tc.expected[0].ModelConfig, got[0].ModelConfig)
-				assert.Equal(t, tc.expected[0].ImageKey, got[0].ImageKey)
 				assert.Equal(t, tc.expected[0].Status, got[0].Status)
 			}
 			mockRepo.AssertExpectations(t)
@@ -274,7 +332,7 @@ func TestJobServiceGetJobByID(t *testing.T) {
 		name        string
 		expected    *Job
 		expectedErr error
-		setupFunc   func(t *testing.T, mockRepo *mockJobRepo, mockJobResultRepo *mockJobResultRepo)
+		setupFunc   func(t *testing.T, mockRepo *mockJobRepo, mockJobImageRepo *mockJobImageRepo)
 		jobID       string
 	}{
 		{
@@ -285,26 +343,24 @@ func TestJobServiceGetJobByID(t *testing.T) {
 				ModelConfig: map[string]interface{}{
 					"prompt": "a photo of a person",
 				},
-				ImageKey:  "jobs/123/image.jpg",
 				Status:    StatusPending,
 				CreatedAt: time.Now(),
 				UpdatedAt: time.Now(),
 			},
 			expectedErr: nil,
-			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobResultRepo *mockJobResultRepo) {
+			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobImageRepo *mockJobImageRepo) {
 				mockRepo.On("GetJobByID", mock.Anything, mock.Anything).Return(&JobModel{ //nolint:exhaustruct
 					ID:          "123",
 					Type:        JobTypeDeselfie,
 					Status:      StatusPending,
 					ModelConfig: datatypes.JSON([]byte(`{"prompt": "a photo of a person"}`)),
-					ImageKey:    "jobs/123/image.jpg",
 				}, nil)
 			},
 			jobID: "123",
 		},
 		{
 			name: "failed_jobrepo",
-			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobResultRepo *mockJobResultRepo) {
+			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobImageRepo *mockJobImageRepo) {
 				mockRepo.On("GetJobByID", mock.Anything, mock.Anything).Return(nil, assert.AnError)
 			},
 			expectedErr: ErrInternal,
@@ -313,13 +369,12 @@ func TestJobServiceGetJobByID(t *testing.T) {
 		},
 		{
 			name: "failed_getjobfrommodel",
-			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobResultRepo *mockJobResultRepo) {
+			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobImageRepo *mockJobImageRepo) {
 				mockRepo.On("GetJobByID", mock.Anything, mock.Anything).Return(&JobModel{ //nolint:exhaustruct
 					ID:          "123",
 					Type:        JobTypeDeselfie,
 					Status:      StatusPending,
 					ModelConfig: datatypes.JSON([]byte(`{"prompt": "missing closing brace"`)),
-					ImageKey:    "jobs/123/image.jpg",
 				}, nil)
 			},
 			expectedErr: ErrInternal,
@@ -328,7 +383,7 @@ func TestJobServiceGetJobByID(t *testing.T) {
 		},
 		{
 			name: "failed_errnotfound",
-			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobResultRepo *mockJobResultRepo) {
+			setupFunc: func(t *testing.T, mockRepo *mockJobRepo, mockJobImageRepo *mockJobImageRepo) {
 				mockRepo.On("GetJobByID", mock.Anything, mock.Anything).Return(nil, ErrNotFound)
 			},
 			expectedErr: ErrNotFound,
@@ -340,16 +395,15 @@ func TestJobServiceGetJobByID(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockRepo := newMockJobRepo()
-			mockJobResultRepo := newMockJobResultRepo()
-			tc.setupFunc(t, mockRepo, mockJobResultRepo)
-			jobService := NewJobService(mockRepo, mockJobResultRepo)
+			mockJobImageRepo := newMockJobImageRepo()
+			tc.setupFunc(t, mockRepo, mockJobImageRepo)
+			jobService := NewJobService(mockRepo, mockJobImageRepo, nil)
 			got, err := jobService.GetJobByID(t.Context(), tc.jobID)
 			assert.Equal(t, tc.expectedErr, err)
 			if tc.expected != nil {
 				assert.Equal(t, tc.expected.ID, got.ID)
 				assert.Equal(t, tc.expected.Type, got.Type)
 				assert.Equal(t, tc.expected.ModelConfig, got.ModelConfig)
-				assert.Equal(t, tc.expected.ImageKey, got.ImageKey)
 				assert.Equal(t, tc.expected.Status, got.Status)
 			}
 			mockRepo.AssertExpectations(t)
@@ -386,7 +440,7 @@ func TestJobService_DeleteJobByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockRepo := newMockJobRepo()
 			tc.setupFunc(t, mockRepo)
-			jobService := NewJobService(mockRepo, nil)
+			jobService := NewJobService(mockRepo, nil, nil)
 			err := jobService.DeleteJobByID(t.Context(), tc.jobID)
 			assert.Equal(t, tc.expectErr, err)
 			mockRepo.AssertExpectations(t)
@@ -394,17 +448,17 @@ func TestJobService_DeleteJobByID(t *testing.T) {
 	}
 }
 
-func TestJobService_GetJobResultsByID(t *testing.T) {
+func TestJobService_GetJobImagesByID(t *testing.T) {
 	testCases := []struct {
 		name      string
-		expect    []*JobResult
+		expect    []*JobImage
 		expectErr error
-		setupFunc func(t *testing.T, mockRepo *mockJobResultRepo)
+		setupFunc func(t *testing.T, mockRepo *mockJobImageRepo)
 		jobID     string
 	}{
 		{
 			name: "success",
-			expect: []*JobResult{
+			expect: []*JobImage{
 				{
 					ID:       "abc",
 					JobID:    "123",
@@ -412,8 +466,8 @@ func TestJobService_GetJobResultsByID(t *testing.T) {
 				},
 			},
 			expectErr: nil,
-			setupFunc: func(t *testing.T, mockRepo *mockJobResultRepo) {
-				mockRepo.On("GetResultsByJobID", mock.Anything, mock.Anything).Return([]*JobResultModel{
+			setupFunc: func(t *testing.T, mockRepo *mockJobImageRepo) {
+				mockRepo.On("GetImages", mock.Anything, mock.Anything).Return([]*JobImageModel{
 					{
 						ID:       "abc",
 						JobID:    "123",
@@ -427,8 +481,8 @@ func TestJobService_GetJobResultsByID(t *testing.T) {
 			name:      "failed_jobrepo",
 			expect:    nil,
 			expectErr: ErrInternal,
-			setupFunc: func(t *testing.T, mockRepo *mockJobResultRepo) {
-				mockRepo.On("GetResultsByJobID", mock.Anything, mock.Anything).Return(nil, assert.AnError)
+			setupFunc: func(t *testing.T, mockRepo *mockJobImageRepo) {
+				mockRepo.On("GetImages", mock.Anything, mock.Anything).Return(nil, assert.AnError)
 			},
 			jobID: "123",
 		},
@@ -436,10 +490,10 @@ func TestJobService_GetJobResultsByID(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockRepo := newMockJobResultRepo()
+			mockRepo := newMockJobImageRepo()
 			tc.setupFunc(t, mockRepo)
-			jobService := NewJobService(nil, mockRepo)
-			got, err := jobService.GetJobResultsByID(t.Context(), tc.jobID)
+			jobService := NewJobService(nil, mockRepo, nil)
+			got, err := jobService.GetJobImagesByID(t.Context(), tc.jobID)
 			assert.Equal(t, tc.expectErr, err)
 			for i := range tc.expect {
 				assert.Equal(t, tc.expect[i].ID, got[i].ID)
@@ -466,7 +520,6 @@ func TestJobService_UpdateJobStatus(t *testing.T) {
 				ID:          "123",
 				Type:        JobTypeDeselfie,
 				ModelConfig: map[string]interface{}{"prompt": "a photo of a person"},
-				ImageKey:    "jobs/123/image.jpg",
 				Status:      StatusFinished,
 			},
 			expectedErr: nil,
@@ -476,7 +529,6 @@ func TestJobService_UpdateJobStatus(t *testing.T) {
 					Type:        JobTypeDeselfie,
 					Status:      StatusFinished,
 					ModelConfig: datatypes.JSON([]byte(`{"prompt": "a photo of a person"}`)),
-					ImageKey:    "jobs/123/image.jpg",
 				}, nil)
 			},
 			jobID:  "123",
@@ -512,7 +564,6 @@ func TestJobService_UpdateJobStatus(t *testing.T) {
 					Type:        JobTypeDeselfie,
 					Status:      StatusPending,
 					ModelConfig: datatypes.JSON([]byte(`{"prompt": "missing closing brace"`)),
-					ImageKey:    "jobs/123/image.jpg",
 				}, nil)
 			},
 			jobID:  "123",
@@ -524,7 +575,7 @@ func TestJobService_UpdateJobStatus(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockRepo := newMockJobRepo()
 			tc.setupFunc(t, mockRepo)
-			jobService := NewJobService(mockRepo, nil)
+			jobService := NewJobService(mockRepo, nil, nil)
 			got, err := jobService.UpdateJobStatus(t.Context(), tc.jobID, tc.status)
 			assert.Equal(t, tc.expectedErr, err)
 			assert.Equal(t, tc.expected, got)

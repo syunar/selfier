@@ -76,9 +76,9 @@ func (h *jobHTTPHandlerImpl) CreateJob(ctx context.Context, input *CreateJobInpu
 		log.Error("job service failed to create job", slog.String("error", err.Error()))
 		return nil, huma.Error500InternalServerError("")
 	}
-	log.Info("job created", slog.String("job_id", jobBody.ID))
+	log.Info("job created", slog.String("id", jobBody.ID))
 	// 4. Wrap the service's result in the handler's output structure
-	return &JobOutput{Body: *jobBody}, nil
+	return &JobOutput{Body: jobBody}, nil
 }
 
 func (h *jobHTTPHandlerImpl) GetJobs(ctx context.Context, input *struct{}) (*JobsOutput, error) {
@@ -112,7 +112,7 @@ func (h *jobHTTPHandlerImpl) GetJobByID(ctx context.Context, input *struct {
 	}
 
 	resp := &JobOutput{
-		Body: *job,
+		Body: job,
 	}
 
 	return resp, nil
@@ -133,13 +133,13 @@ func (h *jobHTTPHandlerImpl) DeleteJobByID(ctx context.Context, input *struct {
 	return &struct{}{}, nil
 }
 
-func (h *jobHTTPHandlerImpl) GetJobResultsByID(ctx context.Context, input *struct {
+func (h *jobHTTPHandlerImpl) GetJobImagesByID(ctx context.Context, input *struct {
 	ID string `path:"id"`
-}) (*JobResultsOutput, error) {
+}) (*JobImagesOutput, error) {
 
 	log := middleware.GetLogger(ctx)
 
-	jobResults, err := h.jobService.GetJobResultsByID(ctx, input.ID)
+	JobImages, err := h.jobService.GetJobImagesByID(ctx, input.ID)
 	if err != nil {
 		log.Error("job service failed to get job results", slog.String("error", err.Error()))
 		if err == ErrNotFound {
@@ -148,8 +148,27 @@ func (h *jobHTTPHandlerImpl) GetJobResultsByID(ctx context.Context, input *struc
 		return nil, huma.Error500InternalServerError("")
 	}
 
-	resp := &JobResultsOutput{
-		Body: jobResults,
+	resp := &JobImagesOutput{
+		Body: JobImages,
 	}
 	return resp, nil
+}
+
+func (h *jobHTTPHandlerImpl) GetPresignedURL(ctx context.Context, input *GetPresignedURLInput) (*GetPresignedURLOutput, error) {
+
+	log := middleware.GetLogger(ctx)
+
+	presignedURL, err := h.jobService.GetPresignedURL(ctx, input.JobID, input.ID)
+	if err != nil {
+		log.Error("job service failed to create presigned url", slog.String("error", err.Error()))
+		if err == ErrNotFound {
+			return nil, huma.Error404NotFound("job id " + input.JobID + " not found")
+		}
+		return nil, huma.Error500InternalServerError("")
+	}
+
+	return &GetPresignedURLOutput{
+		Body: GetPresignedURLOutputBody{
+			URL: presignedURL,
+		}}, nil
 }

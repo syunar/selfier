@@ -129,8 +129,8 @@ Key environment variables (see `.env.example`):
 - Mock implementations for testing
 
 ### Database Models vs Domain Entities
-- **Database Models**: `JobModel`, `JobResultModel` (GORM structs)
-- **Domain Entities**: `Job`, `JobResult` (business logic structs)
+- **Database Models**: `JobModel`, `JobImageModel` (GORM structs)
+- **Domain Entities**: `Job`, `JobImage` (business logic structs)
 - Conversion functions: `GetJobFromModel()`
 
 ### Testing Patterns

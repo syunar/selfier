@@ -18,13 +18,12 @@ type Config struct {
 	Server   ServerConfig   `mapstructure:"server" validate:"required"`
 	Database DatabaseConfig `mapstructure:"database" validate:"required"`
 	Auth     AuthConfig     `mapstructure:"auth" validate:"required"`
-	Redis    RedisConfig    `mapstructure:"redis" validate:"required"`
 	AWS      AWSConfig      `mapstructure:"aws" validate:"required"`
 	Logger   LoggerConfig   `mapstructure:"logger" validate:"required"`
 }
 
 type Primary struct {
-	Env         string `mapstructure:"env" validate:"required,oneof=development staging production"`
+	Env         string `mapstructure:"env" validate:"required,oneof=development production"`
 	ServiceName string `mapstructure:"service_name" validate:"required"`
 	Version     string `mapstructure:"version" validate:"required"`
 }
@@ -73,65 +72,57 @@ type LoggerConfig struct {
 	Level string `mapstructure:"level" validate:"required"`
 }
 
-type RedisConfig struct {
-	Address  string `mapstructure:"address" validate:"required"`
-	Password string `mapstructure:"password"`
-}
-
 type AuthConfig struct {
 	SecretKey string `mapstructure:"secret_key" validate:"required"`
 }
 
 type AWSConfig struct {
-	Region          string `mapstructure:"region" validate:"required"`
-	AccessKeyID     string `mapstructure:"access_key_id" validate:"required"`
-	SecretAccessKey string `mapstructure:"secret_access_key" validate:"required"`
-	UploadBucket    string `mapstructure:"upload_bucket" validate:"required"`
-	EndpointURL     string `mapstructure:"endpoint_url"`
+	Region           string `mapstructure:"region" validate:"required"`
+	AccessKeyID      string `mapstructure:"access_key_id" validate:"required"`
+	SecretAccessKey  string `mapstructure:"secret_access_key" validate:"required"`
+	UploadBucket     string `mapstructure:"upload_bucket" validate:"required"`
+	EndpointURL      string `mapstructure:"endpoint_url"`
+	S3ForcePathStyle bool   `mapstructure:"s3_force_path_style"`
 }
 
 // LoadConfig reads configuration from file and/or environment variables.
 func LoadConfig() (*Config, error) {
 	var cfg Config
-
-	// 1. Set reasonable defaults
 	viper.SetDefault("primary.env", "development")
 	viper.SetDefault("primary.service_name", "selfier")
 	viper.SetDefault("primary.version", "1.0.0")
 	viper.SetDefault("server.port", "8080")
-	viper.SetDefault("server.read_timeout", 15)
-	viper.SetDefault("server.write_timeout", 15)
+	viper.SetDefault("server.read_timeout", 60)
+	viper.SetDefault("server.write_timeout", 60)
 	viper.SetDefault("server.idle_timeout", 60)
 	viper.SetDefault("server.cors_allowed_origins", []string{"http://localhost:3000"})
-
 	viper.SetDefault("database.host", "localhost")
 	viper.SetDefault("database.port", 5432)
-	viper.SetDefault("database.user", "user")
-	viper.SetDefault("database.name", "db")
-	viper.SetDefault("database.password", "password")
+	viper.SetDefault("database.user", "postgres")
+	viper.SetDefault("database.password", "postgres")
+	viper.SetDefault("database.name", "selfier")
 	viper.SetDefault("database.ssl_mode", "disable")
-	viper.SetDefault("database.max_open_conns", 10)
-	viper.SetDefault("database.max_idle_conns", 5)
-	viper.SetDefault("database.conn_max_lifetime", 300)  // 5 minutes
-	viper.SetDefault("database.conn_max_idle_time", 120) // 2 minutes
+	viper.SetDefault("database.max_open_conns", 25)
+	viper.SetDefault("database.max_idle_conns", 25)
+	viper.SetDefault("database.conn_max_lifetime", 5)
+	viper.SetDefault("database.conn_max_idle_time", 5)
 	viper.SetDefault("database.gorm_logger.slow_query_threshold", "200ms")
-	viper.SetDefault("database.gorm_logger.ignore_record_not_found", true)
-
-	viper.SetDefault("auth.secret_key", "default-secret")
-	viper.SetDefault("redis.address", "localhost:6379")
-
-	viper.SetDefault("aws.region", "us-east-1")
-	// For credentials, it's better not to have defaults
-	viper.SetDefault("aws.access_key_id", "access_key_id")
-	viper.SetDefault("aws.secret_access_key", "secret_access_key")
-	viper.SetDefault("aws.upload_bucket", "upload_bucket")
-
+	viper.SetDefault("database.gorm_logger.ignore_record_not_found", false)
 	viper.SetDefault("logger.level", "info")
+	viper.SetDefault("auth.secret_key", "your-secret-key")
+	viper.SetDefault("aws.region", "us-east-1")
+	viper.SetDefault("aws.access_key_id", "your-access-key-id")
+	viper.SetDefault("aws.secret_access_key", "your-secret-access-key")
+	viper.SetDefault("aws.upload_bucket", "your-upload-bucket")
+	viper.SetDefault("aws.endpoint_url", "https://s3.amazonaws.com")
+	viper.SetDefault("aws.s3_force_path_style", false)
 
-	// 2. Set up to read from a config file (e.g., config.yml)
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
+
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
@@ -139,16 +130,10 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
-	// 3. Set up to read from environment variables
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.AutomaticEnv()
-
-	// 4. Unmarshal all the configuration into the Config struct
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("unable to decode into struct: %w", err)
 	}
 
-	// 5. Validate the configuration struct
 	validate := validator.New()
 	if err := validate.Struct(&cfg); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)

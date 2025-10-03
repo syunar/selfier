@@ -76,12 +76,20 @@ func NewRouter(jobHandler job.JobHTTPHandler, baseLogger *slog.Logger) *http.Ser
 	}, jobHandler.DeleteJobByID)
 
 	huma.Register(api, huma.Operation{ //nolint:exhaustruct
-		OperationID: "get-job-results-by-id",
+		OperationID: "get-job-images-by-id",
 		Method:      http.MethodGet,
-		Path:        "/jobs/{id}/results",
-		Summary:     "Get job results by id",
+		Path:        "/jobs/{id}/images",
+		Summary:     "Get job images by id",
 		Tags:        []string{"Jobs"},
-	}, jobHandler.GetJobResultsByID)
+	}, jobHandler.GetJobImagesByID)
+
+	huma.Register(api, huma.Operation{ //nolint:exhaustruct
+		OperationID: "get-presigned-url",
+		Method:      http.MethodGet,
+		Path:        "/jobs/{job_id}/images/{image_id}",
+		Summary:     "Get presigned url",
+		Tags:        []string{"Jobs"},
+	}, jobHandler.GetPresignedURL)
 
 	return router
 }

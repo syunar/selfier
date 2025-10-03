@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"selfier/internal/module/job"
+	"selfier/pkg/aws"
 	"selfier/pkg/config"
 	"selfier/pkg/database"
 	"selfier/pkg/logger"
@@ -42,6 +43,8 @@ func main() {
 		log.Fatalf("failed to load configuration: %v", err)
 	}
 
+	log.Printf("config: %+v", cfg)
+
 	// 2. Initialize logger
 	log := logger.NewLogger(logger.Config{
 		Service: cfg.Primary.ServiceName,
@@ -54,14 +57,21 @@ func main() {
 	if err != nil {
 		log.Error("failed to connect to database", slog.String("error", err.Error()))
 	}
+	log.Info("connected to database", slog.String("host", cfg.Database.Host))
+
+	s3Client, err := aws.NewS3(&cfg.AWS)
+	if err != nil {
+		log.Error("failed to connect to s3", slog.String("error", err.Error()))
+	}
+	log.Info("connected to s3", slog.String("endpoint", cfg.AWS.EndpointURL))
 
 	// 4. Initialize dependencies
 	jobRepository, _ := job.NewJobRepositoryGorm(db)
-	jobResultRepository, _ := job.NewJobResultRepositoryGorm(db)
+	JobImageRepository, _ := job.NewJobImageRepositoryGorm(db)
+	jobObjectStorage := job.NewJobObjectStorageS3(s3Client, cfg.AWS.UploadBucket)
 	// jobEventPublisher := job.NewJobEventPublisherInngest()
-	// jobObjectStorage := job.NewJobObjectStorageAWS()
 
-	jobService := job.NewJobService(jobRepository, jobResultRepository)
+	jobService := job.NewJobService(jobRepository, JobImageRepository, jobObjectStorage)
 	jobHTTPHandler := job.NewJobHTTPHandler(jobService)
 
 	// 5. Start the HTTP server
