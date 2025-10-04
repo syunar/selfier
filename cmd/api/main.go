@@ -9,10 +9,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"selfier/internal/module/aideselfie"
+	"selfier/internal/module/event"
 	"selfier/internal/module/job"
 	"selfier/pkg/aws"
 	"selfier/pkg/config"
 	"selfier/pkg/database"
+	"selfier/pkg/inngest"
 	"selfier/pkg/logger"
 	"selfier/pkg/router"
 	"strings"
@@ -65,14 +68,27 @@ func main() {
 	}
 	log.Info("connected to s3", slog.String("endpoint", cfg.AWS.EndpointURL))
 
+	// inngest producer client
+	producer := inngest.NewClient(&cfg.Inngest)
+
 	// 4. Initialize dependencies
 	jobRepository, _ := job.NewJobRepositoryGorm(db)
 	JobImageRepository, _ := job.NewJobImageRepositoryGorm(db)
 	jobObjectStorage := job.NewJobObjectStorageS3(s3Client, cfg.AWS.UploadBucket)
-	// jobEventPublisher := job.NewJobEventPublisherInngest()
+	jobEventPublisher := job.NewJobEventPublisherInngest(producer)
 
-	jobService := job.NewJobService(jobRepository, JobImageRepository, jobObjectStorage)
+	aideselfieProvider := aideselfie.NewAideselfieProviderModal()
+	aideselfieService := aideselfie.NewAideselfieService(aideselfieProvider)
+
+	jobService := job.NewJobService(
+		jobRepository,
+		JobImageRepository,
+		jobObjectStorage,
+		jobEventPublisher,
+	)
 	jobHTTPHandler := job.NewJobHTTPHandler(jobService)
+
+	eventHandler := event.NewEventHandler(jobService, aideselfieService)
 
 	// 5. Start the HTTP server
 	srv := &http.Server{ //nolint:exhaustruct
@@ -88,6 +104,16 @@ func main() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("Server startup failed", slog.String("error", err.Error()))
 		}
+	}()
+
+	// Inngest Serve
+	consumer := inngest.NewConsumerClient(&cfg.Inngest, eventHandler)
+	go func() {
+		log.Info(
+			"Starting inngest consumer server",
+			slog.String("addr", fmt.Sprintf(":%s", cfg.Inngest.Port)),
+		)
+		err = http.ListenAndServe(fmt.Sprintf(":%s", cfg.Inngest.Port), consumer.Serve())
 	}()
 
 	// 6. Graceful shutdown

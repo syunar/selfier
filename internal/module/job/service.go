@@ -13,19 +13,30 @@ type jobServiceImpl struct {
 	jobRepository      JobRepository
 	jobImageRepository JobImageRepository
 	jobObjectStorage   JobObjectStorage
-	// jobEventPublisher   JobEventPublisher
+	jobEventPublisher  JobEventPublisher
 }
 
-func NewJobService(jobRepository JobRepository, jobImageRepository JobImageRepository, jobObjectStorage JobObjectStorage) JobService {
+func NewJobService(
+	jobRepository JobRepository,
+	jobImageRepository JobImageRepository,
+	jobObjectStorage JobObjectStorage,
+	jobEventPublisher JobEventPublisher,
+) JobService {
 	return &jobServiceImpl{
 		jobRepository:      jobRepository,
 		jobImageRepository: jobImageRepository,
 		jobObjectStorage:   jobObjectStorage,
-		// jobEventPublisher:   jobEventPublisher,
+		jobEventPublisher:  jobEventPublisher,
 	}
 }
 
-func (s *jobServiceImpl) CreateJob(ctx context.Context, jobType string, modelConfig map[string]interface{}, imageReader io.Reader, imageFilename string) (*Job, error) {
+func (s *jobServiceImpl) CreateJob(
+	ctx context.Context,
+	jobType string,
+	modelConfig map[string]interface{},
+	imageReader io.Reader,
+	imageFilename string,
+) (*Job, error) {
 
 	log := middleware.GetLogger(ctx)
 
@@ -59,8 +70,16 @@ func (s *jobServiceImpl) CreateJob(ctx context.Context, jobType string, modelCon
 		return nil, ErrInternal
 	}
 
-	// TODO
-	// s.jobEventPublisher.PublishCreatedJobEvent()
+	_, err = s.jobEventPublisher.JobCreated(ctx, &JobCreatedEventData{
+		JobID:        jobModel.ID,
+		InputImageID: imageID,
+		ModelConfig:  modelConfig,
+	})
+
+	if err != nil {
+		log.Error("failed to publish job created event", slog.String("error", err.Error()))
+		return nil, ErrInternal
+	}
 
 	job, err := GetJobFromModel(jobModel)
 	if err != nil {
@@ -100,7 +119,11 @@ func (s *jobServiceImpl) GetJobByID(ctx context.Context, jobID string) (*Job, er
 	jobModel, err := s.jobRepository.GetJobByID(ctx, jobID)
 
 	if err != nil {
-		log.Error("failed to get job by ID", slog.String("job_id", jobID), slog.String("error", err.Error()))
+		log.Error(
+			"failed to get job by ID",
+			slog.String("job_id", jobID),
+			slog.String("error", err.Error()),
+		)
 		if err == ErrNotFound {
 			return nil, ErrNotFound
 		}
@@ -122,7 +145,11 @@ func (s *jobServiceImpl) DeleteJobByID(ctx context.Context, jobID string) error 
 
 	err := s.jobRepository.DeleteJobByID(ctx, jobID)
 	if err != nil {
-		log.Error("failed to delete job by ID", slog.String("job_id", jobID), slog.String("error", err.Error()))
+		log.Error(
+			"failed to delete job by ID",
+			slog.String("job_id", jobID),
+			slog.String("error", err.Error()),
+		)
 		return ErrInternal
 	}
 
@@ -135,7 +162,11 @@ func (s *jobServiceImpl) GetJobImagesByID(ctx context.Context, jobID string) ([]
 
 	JobImageModels, err := s.jobImageRepository.GetImages(ctx, jobID)
 	if err != nil {
-		log.Error("failed to get job results by job ID", slog.String("job_id", jobID), slog.String("error", err.Error()))
+		log.Error(
+			"failed to get job results by job ID",
+			slog.String("job_id", jobID),
+			slog.String("error", err.Error()),
+		)
 		return nil, ErrInternal
 	}
 
@@ -148,13 +179,22 @@ func (s *jobServiceImpl) GetJobImagesByID(ctx context.Context, jobID string) ([]
 	return JobImages, nil
 }
 
-func (s *jobServiceImpl) GetJobImageByID(ctx context.Context, jobID string, imageID string) (*JobImage, error) {
+func (s *jobServiceImpl) GetJobImageByID(
+	ctx context.Context,
+	jobID string,
+	imageID string,
+) (*JobImage, error) {
 
 	log := middleware.GetLogger(ctx)
 
 	JobImageModel, err := s.jobImageRepository.GetImage(ctx, jobID, imageID)
 	if err != nil {
-		log.Error("failed to get job result by ID", slog.String("job_id", jobID), slog.String("image_id", imageID), slog.String("error", err.Error()))
+		log.Error(
+			"failed to get job result by ID",
+			slog.String("job_id", jobID),
+			slog.String("image_id", imageID),
+			slog.String("error", err.Error()),
+		)
 		if err == ErrNotFound {
 			return nil, ErrNotFound
 		}
@@ -170,13 +210,22 @@ func (s *jobServiceImpl) GetJobImageByID(ctx context.Context, jobID string, imag
 	return JobImage, nil
 }
 
-func (s *jobServiceImpl) UpdateJobStatus(ctx context.Context, jobID string, status string) (*Job, error) {
+func (s *jobServiceImpl) UpdateJobStatus(
+	ctx context.Context,
+	jobID string,
+	status string,
+) (*Job, error) {
 	// s.jobRepository.UpdateJobStatus()
 	log := middleware.GetLogger(ctx)
 
 	jobModel, err := s.jobRepository.UpdateJobStatus(ctx, jobID, status)
 	if err != nil {
-		log.Error("failed to update job status", slog.String("job_id", jobID), slog.String("status", status), slog.String("error", err.Error()))
+		log.Error(
+			"failed to update job status",
+			slog.String("job_id", jobID),
+			slog.String("status", status),
+			slog.String("error", err.Error()),
+		)
 		if err == ErrNotFound {
 			return nil, ErrNotFound
 		}
@@ -191,7 +240,11 @@ func (s *jobServiceImpl) UpdateJobStatus(ctx context.Context, jobID string, stat
 	return job, nil
 }
 
-func (s *jobServiceImpl) UploadImage(ctx context.Context, imageReader io.Reader, imageFilename string) (string, error) {
+func (s *jobServiceImpl) UploadImage(
+	ctx context.Context,
+	imageReader io.Reader,
+	imageFilename string,
+) (string, error) {
 	log := middleware.GetLogger(ctx)
 
 	fileKey, err := s.jobObjectStorage.UploadImage(ctx, imageFilename, imageReader)
@@ -205,13 +258,22 @@ func (s *jobServiceImpl) UploadImage(ctx context.Context, imageReader io.Reader,
 	return fileKey, nil
 }
 
-func (s *jobServiceImpl) GetPresignedURL(ctx context.Context, jobID string, imageID string) (string, error) {
+func (s *jobServiceImpl) GetPresignedURL(
+	ctx context.Context,
+	jobID string,
+	imageID string,
+) (string, error) {
 
 	log := middleware.GetLogger(ctx)
 
 	jobImageModel, err := s.jobImageRepository.GetImage(ctx, jobID, imageID)
 	if err != nil {
-		log.Error("failed to get job image by ID", slog.String("job_id", jobID), slog.String("image_id", imageID), slog.String("error", err.Error()))
+		log.Error(
+			"failed to get job image by ID",
+			slog.String("job_id", jobID),
+			slog.String("image_id", imageID),
+			slog.String("error", err.Error()),
+		)
 		if err == ErrNotFound {
 			return "", ErrNotFound
 		}

@@ -14,18 +14,19 @@ import (
 // Config holds all the configuration for the application.
 // Values are loaded by Viper from a config file and/or environment variables.
 type Config struct {
-	Primary  Primary        `mapstructure:"primary" validate:"required"`
-	Server   ServerConfig   `mapstructure:"server" validate:"required"`
+	Primary  Primary        `mapstructure:"primary"  validate:"required"`
+	Server   ServerConfig   `mapstructure:"server"   validate:"required"`
 	Database DatabaseConfig `mapstructure:"database" validate:"required"`
-	Auth     AuthConfig     `mapstructure:"auth" validate:"required"`
-	AWS      AWSConfig      `mapstructure:"aws" validate:"required"`
-	Logger   LoggerConfig   `mapstructure:"logger" validate:"required"`
+	Auth     AuthConfig     `mapstructure:"auth"     validate:"required"`
+	AWS      AWSConfig      `mapstructure:"aws"      validate:"required"`
+	Logger   LoggerConfig   `mapstructure:"logger"   validate:"required"`
+	Inngest  InngestConfig  `mapstructure:"inngest"  validate:"required"`
 }
 
 type Primary struct {
-	Env         string `mapstructure:"env" validate:"required,oneof=development production"`
+	Env         string `mapstructure:"env"          validate:"required,oneof=development production"`
 	ServiceName string `mapstructure:"service_name" validate:"required"`
-	Version     string `mapstructure:"version" validate:"required"`
+	Version     string `mapstructure:"version"      validate:"required"`
 }
 
 func (p Primary) IsProd() bool {
@@ -33,25 +34,25 @@ func (p Primary) IsProd() bool {
 }
 
 type ServerConfig struct {
-	Port               string   `mapstructure:"port" validate:"required"`
-	ReadTimeout        int      `mapstructure:"read_timeout" validate:"required"`
-	WriteTimeout       int      `mapstructure:"write_timeout" validate:"required"`
-	IdleTimeout        int      `mapstructure:"idle_timeout" validate:"required"`
+	Port               string   `mapstructure:"port"                 validate:"required"`
+	ReadTimeout        int      `mapstructure:"read_timeout"         validate:"required"`
+	WriteTimeout       int      `mapstructure:"write_timeout"        validate:"required"`
+	IdleTimeout        int      `mapstructure:"idle_timeout"         validate:"required"`
 	CORSAllowedOrigins []string `mapstructure:"cors_allowed_origins" validate:"required"`
 }
 
 type DatabaseConfig struct {
-	Host            string           `mapstructure:"host" validate:"required"`
-	Port            int              `mapstructure:"port" validate:"required"`
-	User            string           `mapstructure:"user" validate:"required"`
-	Password        string           `mapstructure:"password" validate:"required"`
-	Name            string           `mapstructure:"name" validate:"required"`
-	SSLMode         string           `mapstructure:"ssl_mode" validate:"required"`
-	MaxOpenConns    int              `mapstructure:"max_open_conns" validate:"required"`
-	MaxIdleConns    int              `mapstructure:"max_idle_conns" validate:"required"`
-	ConnMaxLifetime int              `mapstructure:"conn_max_lifetime" validate:"required"`
+	Host            string           `mapstructure:"host"               validate:"required"`
+	Port            int              `mapstructure:"port"               validate:"required"`
+	User            string           `mapstructure:"user"               validate:"required"`
+	Password        string           `mapstructure:"password"           validate:"required"`
+	Name            string           `mapstructure:"name"               validate:"required"`
+	SSLMode         string           `mapstructure:"ssl_mode"           validate:"required"`
+	MaxOpenConns    int              `mapstructure:"max_open_conns"     validate:"required"`
+	MaxIdleConns    int              `mapstructure:"max_idle_conns"     validate:"required"`
+	ConnMaxLifetime int              `mapstructure:"conn_max_lifetime"  validate:"required"`
 	ConnMaxIdleTime int              `mapstructure:"conn_max_idle_time" validate:"required"`
-	GormLogger      GormLoggerConfig `mapstructure:"gorm_logger" validate:"required"`
+	GormLogger      GormLoggerConfig `mapstructure:"gorm_logger"        validate:"required"`
 }
 
 // DSN returns the Data Source Name for connecting to the database.
@@ -63,7 +64,7 @@ func (db DatabaseConfig) DSN() string {
 
 // GormLoggerConfig for GORM-specific logging settings.
 type GormLoggerConfig struct {
-	SlowQueryThreshold   time.Duration `mapstructure:"slow_query_threshold" validate:"required"`
+	SlowQueryThreshold   time.Duration `mapstructure:"slow_query_threshold"    validate:"required"`
 	IgnoreRecordNotFound bool          `mapstructure:"ignore_record_not_found"`
 }
 
@@ -77,12 +78,18 @@ type AuthConfig struct {
 }
 
 type AWSConfig struct {
-	Region           string `mapstructure:"region" validate:"required"`
-	AccessKeyID      string `mapstructure:"access_key_id" validate:"required"`
-	SecretAccessKey  string `mapstructure:"secret_access_key" validate:"required"`
-	UploadBucket     string `mapstructure:"upload_bucket" validate:"required"`
+	Region           string `mapstructure:"region"              validate:"required"`
+	AccessKeyID      string `mapstructure:"access_key_id"       validate:"required"`
+	SecretAccessKey  string `mapstructure:"secret_access_key"   validate:"required"`
+	UploadBucket     string `mapstructure:"upload_bucket"       validate:"required"`
 	EndpointURL      string `mapstructure:"endpoint_url"`
 	S3ForcePathStyle bool   `mapstructure:"s3_force_path_style"`
+}
+
+type InngestConfig struct {
+	AppID string `mapstructure:"app_id" validate:"required"`
+	Dev   bool   `mapstructure:"dev"    validate:"required"`
+	Port  string `mapstructure:"port"   validate:"required"`
 }
 
 // LoadConfig reads configuration from file and/or environment variables.
@@ -116,6 +123,10 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("aws.upload_bucket", "your-upload-bucket")
 	viper.SetDefault("aws.endpoint_url", "https://s3.amazonaws.com")
 	viper.SetDefault("aws.s3_force_path_style", false)
+
+	viper.SetDefault("inngest.app_id", "selfier")
+	viper.SetDefault("inngest.dev", true)
+	viper.SetDefault("inngest.port", "8081")
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
