@@ -55,19 +55,19 @@ const (
 // ---------------
 
 type Job struct {
-	ID          string                 `json:"id" example:"123"`
-	Type        string                 `json:"type" example:"deselfie"`
+	ID          string                 `json:"id"           example:"123"`
+	Type        string                 `json:"type"         example:"deselfie"`
 	ModelConfig map[string]interface{} `json:"model_config" example:"{\"prompt\": \"a photo of a person\"}"`
-	Status      string                 `json:"status" example:"pending"`
+	Status      string                 `json:"status"       example:"pending"`
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
 }
 
 type JobImage struct {
-	ID        string    `json:"id" example:"abc"`
-	JobID     string    `json:"job_id" example:"123"`
-	ImageKey  string    `json:"image_key" example:"jobs/123/image.jpg"`
-	Type      string    `json:"type" example:"input"`
+	ID        string    `json:"id"         example:"abc"`
+	JobID     string    `json:"job_id"     example:"123"`
+	ImageKey  string    `json:"image_key"  example:"jobs/123/image.jpg"`
+	Type      string    `json:"type"       example:"input"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -109,9 +109,9 @@ func GetJobImageFromModel(jobImageModel *JobImageModel) (*JobImage, error) {
 // ---- Body ----
 
 type CreateJobRawBody struct {
-	Type        string        `form:"type" doc:"Job type" enum:"deselfie" example:"deselfie" required:"true"`
-	ModelConfig string        `form:"model_config" doc:"Job model configuration" example:"{\"prompt\": \"a photo of a person\"}" default:"{}" required:"true"`
-	Image       huma.FormFile `form:"image" required:"true"`
+	Type        string        `form:"type"         doc:"Job type"                enum:"deselfie" example:"deselfie"                          required:"true"`
+	ModelConfig string        `form:"model_config" doc:"Job model configuration"                 example:"{\"prompt\": \"a photo of a person\"}" required:"true" default:"{}"`
+	Image       huma.FormFile `form:"image"                                                                                                  required:"true"`
 }
 
 type GetPresignedURLOutputBody struct {
@@ -126,7 +126,7 @@ type CreateJobInput struct {
 
 type GetPresignedURLInput struct {
 	ID    string `path:"image_id" required:"true" doc:"Image ID" example:"f6b57be8-aa17-4e46-8cca-396cb7f977e9"`
-	JobID string `path:"job_id" required:"true" doc:"Job ID" example:"052ef2f5-28dd-44e6-8345-e8fc11235d1c"`
+	JobID string `path:"job_id"   required:"true" doc:"Job ID"   example:"052ef2f5-28dd-44e6-8345-e8fc11235d1c"`
 }
 
 type GetPresignedURLOutput struct {
@@ -170,3 +170,9 @@ type JobImageModel struct {
 	ImageKey string `gorm:"type:string;not null"`
 	Type     string `gorm:"type:string;not null"`
 }
+
+// -------------
+// Event Topic
+// ------------
+
+const JobCreatedEventTopic = "api/job.created"

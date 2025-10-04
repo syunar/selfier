@@ -18,11 +18,20 @@ type JobHTTPHandler interface {
 	GetJobImagesByID(ctx context.Context, input *struct {
 		ID string `path:"id"`
 	}) (*JobImagesOutput, error)
-	GetPresignedURL(ctx context.Context, input *GetPresignedURLInput) (*GetPresignedURLOutput, error)
+	GetPresignedURL(
+		ctx context.Context,
+		input *GetPresignedURLInput,
+	) (*GetPresignedURLOutput, error)
 }
 
 type JobService interface {
-	CreateJob(ctx context.Context, jobType string, modelConfig map[string]interface{}, imageReader io.Reader, imageFilename string) (*Job, error)
+	CreateJob(
+		ctx context.Context,
+		jobType string,
+		modelConfig map[string]interface{},
+		imageReader io.Reader,
+		imageFilename string,
+	) (*Job, error)
 	GetJobs(ctx context.Context) ([]*Job, error)
 	GetJobByID(ctx context.Context, jobID string) (*Job, error)
 	DeleteJobByID(ctx context.Context, jobID string) error
@@ -33,7 +42,13 @@ type JobService interface {
 }
 
 type JobRepository interface {
-	CreateJob(ctx context.Context, id string, jobType string, modelConfig map[string]interface{}, status string) (*JobModel, error)
+	CreateJob(
+		ctx context.Context,
+		id string,
+		jobType string,
+		modelConfig map[string]interface{},
+		status string,
+	) (*JobModel, error)
 	GetJobs(ctx context.Context) ([]*JobModel, error)
 	GetJobByID(ctx context.Context, id string) (*JobModel, error)
 	DeleteJobByID(ctx context.Context, id string) error
@@ -41,7 +56,13 @@ type JobRepository interface {
 }
 
 type JobImageRepository interface {
-	CreateImage(ctx context.Context, imageID string, jobID string, imageKey string, imageType string) (*JobImageModel, error)
+	CreateImage(
+		ctx context.Context,
+		imageID string,
+		jobID string,
+		imageKey string,
+		imageType string,
+	) (*JobImageModel, error)
 	GetImages(ctx context.Context, jobID string) ([]*JobImageModel, error)
 	GetImage(ctx context.Context, jobID string, imageID string) (*JobImageModel, error)
 }
@@ -50,8 +71,4 @@ type JobObjectStorage interface {
 	UploadImage(ctx context.Context, fileName string, file io.Reader) (string, error)
 	GetPresignedURL(ctx context.Context, objectKey string) (string, error)
 	DeleteImage(ctx context.Context, key string) error
-}
-
-type JobEventPublisher interface {
-	PublishCreatedJobEvent()
 }
