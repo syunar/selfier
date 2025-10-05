@@ -14,30 +14,31 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-type jobObjectStorageS3 struct {
+const (
+	BucketName string = "selfier"
+)
+
+type storages3 struct {
 	s3Client *s3.Client
-	bucket   string
 }
 
-func NewJobObjectStorageS3(s3 *s3.Client, bucket string) JobObjectStorage {
-	return &jobObjectStorageS3{s3, bucket}
+func NewStorageS3(s3Client *s3.Client) Storage {
+	return &storages3{s3Client}
 }
 
-func (o *jobObjectStorageS3) UploadImage(ctx context.Context, fileName string, file io.Reader) (string, error) {
+func (s *storages3) Upload(ctx context.Context, file io.Reader, fileName string) (string, error) {
 
 	log := middleware.GetLogger(ctx)
 
 	fileKey := fmt.Sprintf("%s_%d", fileName, time.Now().Unix())
-
 	var buffer bytes.Buffer
 	_, err := io.Copy(&buffer, file)
 	if err != nil {
 		log.Error("failed to read file", slog.String("error", err.Error()))
-		return "", ErrReadFile
+		return "", ErrUnreadableFile
 	}
-
-	_, err = o.s3Client.PutObject(ctx, &s3.PutObjectInput{ //nolint:exhaustruct
-		Bucket:      aws.String(o.bucket),
+	_, err = s.s3Client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(BucketName),
 		Key:         aws.String(fileKey),
 		Body:        bytes.NewReader(buffer.Bytes()),
 		ContentType: aws.String(http.DetectContentType(buffer.Bytes())),
@@ -50,19 +51,18 @@ func (o *jobObjectStorageS3) UploadImage(ctx context.Context, fileName string, f
 	return fileKey, nil
 }
 
-func (o *jobObjectStorageS3) GetPresignedURL(ctx context.Context, objectKey string) (string, error) {
+func (s *storages3) GetPresignedURL(ctx context.Context, key string) (string, error) {
 
 	log := middleware.GetLogger(ctx)
 
-	presignClient := s3.NewPresignClient(o.s3Client)
+	presignClient := s3.NewPresignClient(s.s3Client)
 
-	// TODO: make it configurable
 	expiration := time.Minute * 60
 
 	presignedURL, err := presignClient.PresignGetObject(ctx,
 		&s3.GetObjectInput{ //nolint:exhaustruct
-			Bucket: aws.String(o.bucket),
-			Key:    aws.String(objectKey),
+			Bucket: aws.String(BucketName),
+			Key:    aws.String(key),
 		},
 		s3.WithPresignExpires(expiration))
 
@@ -74,12 +74,11 @@ func (o *jobObjectStorageS3) GetPresignedURL(ctx context.Context, objectKey stri
 	return presignedURL.URL, nil
 }
 
-func (o *jobObjectStorageS3) DeleteImage(ctx context.Context, key string) error {
+func (s *storages3) Delete(ctx context.Context, key string) error {
 
 	log := middleware.GetLogger(ctx)
-
-	_, err := o.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{ //nolint:exhaustruct
-		Bucket: aws.String(o.bucket),
+	_, err := s.s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{ //nolint:exhaustruct
+		Bucket: aws.String(BucketName),
 		Key:    aws.String(key),
 	})
 	if err != nil {
