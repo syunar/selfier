@@ -19,7 +19,6 @@ type Config struct {
 	Database DatabaseConfig `mapstructure:"database" validate:"required"`
 	Auth     AuthConfig     `mapstructure:"auth"     validate:"required"`
 	AWS      AWSConfig      `mapstructure:"aws"      validate:"required"`
-	Logger   LoggerConfig   `mapstructure:"logger"   validate:"required"`
 	Inngest  InngestConfig  `mapstructure:"inngest"  validate:"required"`
 }
 
@@ -42,17 +41,16 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host            string           `mapstructure:"host"               validate:"required"`
-	Port            int              `mapstructure:"port"               validate:"required"`
-	User            string           `mapstructure:"user"               validate:"required"`
-	Password        string           `mapstructure:"password"           validate:"required"`
-	Name            string           `mapstructure:"name"               validate:"required"`
-	SSLMode         string           `mapstructure:"ssl_mode"           validate:"required"`
-	MaxOpenConns    int              `mapstructure:"max_open_conns"     validate:"required"`
-	MaxIdleConns    int              `mapstructure:"max_idle_conns"     validate:"required"`
-	ConnMaxLifetime int              `mapstructure:"conn_max_lifetime"  validate:"required"`
-	ConnMaxIdleTime int              `mapstructure:"conn_max_idle_time" validate:"required"`
-	GormLogger      GormLoggerConfig `mapstructure:"gorm_logger"        validate:"required"`
+	Host            string `mapstructure:"host"               validate:"required"`
+	Port            int    `mapstructure:"port"               validate:"required"`
+	User            string `mapstructure:"user"               validate:"required"`
+	Password        string `mapstructure:"password"           validate:"required"`
+	Name            string `mapstructure:"name"               validate:"required"`
+	SSLMode         string `mapstructure:"ssl_mode"           validate:"required"`
+	MaxOpenConns    int    `mapstructure:"max_open_conns"     validate:"required"`
+	MaxIdleConns    int    `mapstructure:"max_idle_conns"     validate:"required"`
+	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime"  validate:"required"`
+	ConnMaxIdleTime int    `mapstructure:"conn_max_idle_time" validate:"required"`
 }
 
 // DSN returns the Data Source Name for connecting to the database.
@@ -66,11 +64,6 @@ func (db DatabaseConfig) DSN() string {
 type GormLoggerConfig struct {
 	SlowQueryThreshold   time.Duration `mapstructure:"slow_query_threshold"    validate:"required"`
 	IgnoreRecordNotFound bool          `mapstructure:"ignore_record_not_found"`
-}
-
-// LoggerConfig for application-wide logging settings.
-type LoggerConfig struct {
-	Level string `mapstructure:"level" validate:"required"`
 }
 
 type AuthConfig struct {
@@ -89,20 +82,21 @@ type AWSConfig struct {
 type InngestConfig struct {
 	AppID string `mapstructure:"app_id" validate:"required"`
 	Dev   bool   `mapstructure:"dev"    validate:"required"`
-	Port  string `mapstructure:"port"   validate:"required"`
 }
 
 // LoadConfig reads configuration from file and/or environment variables.
-func LoadConfig() (*Config, error) {
+func LoadConfig() *Config {
 	var cfg Config
 	viper.SetDefault("primary.env", "development")
 	viper.SetDefault("primary.service_name", "selfier")
 	viper.SetDefault("primary.version", "1.0.0")
+
 	viper.SetDefault("server.port", "8080")
 	viper.SetDefault("server.read_timeout", 60)
 	viper.SetDefault("server.write_timeout", 60)
 	viper.SetDefault("server.idle_timeout", 60)
 	viper.SetDefault("server.cors_allowed_origins", []string{"http://localhost:3000"})
+
 	viper.SetDefault("database.host", "localhost")
 	viper.SetDefault("database.port", 5432)
 	viper.SetDefault("database.user", "postgres")
@@ -113,10 +107,9 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("database.max_idle_conns", 25)
 	viper.SetDefault("database.conn_max_lifetime", 5)
 	viper.SetDefault("database.conn_max_idle_time", 5)
-	viper.SetDefault("database.gorm_logger.slow_query_threshold", "200ms")
-	viper.SetDefault("database.gorm_logger.ignore_record_not_found", false)
-	viper.SetDefault("logger.level", "info")
+
 	viper.SetDefault("auth.secret_key", "your-secret-key")
+
 	viper.SetDefault("aws.region", "us-east-1")
 	viper.SetDefault("aws.access_key_id", "your-access-key-id")
 	viper.SetDefault("aws.secret_access_key", "your-secret-access-key")
@@ -126,7 +119,6 @@ func LoadConfig() (*Config, error) {
 
 	viper.SetDefault("inngest.app_id", "selfier")
 	viper.SetDefault("inngest.dev", true)
-	viper.SetDefault("inngest.port", "8081")
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
@@ -137,18 +129,18 @@ func LoadConfig() (*Config, error) {
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading config file: %w", err)
+			panic(err)
 		}
 	}
 
 	if err := viper.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("unable to decode into struct: %w", err)
+		panic(fmt.Errorf("unable to decode into struct: %w", err))
 	}
 
 	validate := validator.New()
 	if err := validate.Struct(&cfg); err != nil {
-		return nil, fmt.Errorf("configuration validation failed: %w", err)
+		panic(fmt.Errorf("configuration validation failed: %w", err))
 	}
 
-	return &cfg, nil
+	return &cfg
 }

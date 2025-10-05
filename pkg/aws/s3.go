@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-func NewS3(cfg *config.AWSConfig) (*s3.Client, error) {
+func NewS3(cfg *config.AWSConfig) *s3.Client {
 
 	var configOptions []func(*awsconfig.LoadOptions) error
 
@@ -26,7 +26,7 @@ func NewS3(cfg *config.AWSConfig) (*s3.Client, error) {
 	awsCfg, err := awsconfig.LoadDefaultConfig(context.TODO(), configOptions...)
 	if err != nil {
 		log.Printf("Error loading AWS configuration: %v", err)
-		return nil, err
+		panic(err)
 	}
 
 	if cfg.EndpointURL != "" {
@@ -38,5 +38,5 @@ func NewS3(cfg *config.AWSConfig) (*s3.Client, error) {
 		o.UsePathStyle = cfg.S3ForcePathStyle
 	})
 
-	return client, nil
+	return client
 }

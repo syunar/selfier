@@ -2,32 +2,39 @@
 package database
 
 import (
-	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"selfier/pkg/config"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-// NewConnection creates and returns a new GORM DB instance based on the provided configuration.
+// NewDatabase creates and returns a new GORM DB instance based on the provided configuration.
 // It also configures the connection pool and pings the database to ensure connectivity.
-func NewConnection(cfg *config.DatabaseConfig) (*gorm.DB, error) {
-	// 1. Create the Data Source Name (DSN) string from the config
+func NewDatabase(cfg *config.DatabaseConfig) *gorm.DB {
 
 	// 3. Open the database connection
-	db, err := gorm.Open(postgres.Open(cfg.DSN()), &gorm.Config{ //nolint:exhaustruct
+	gormLogger := logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{
+		SlowThreshold:             500 * time.Millisecond,
+		LogLevel:                  logger.Warn,
+		IgnoreRecordNotFoundError: false,
+		Colorful:                  true,
+	})
+	db, err := gorm.Open(postgres.Open(cfg.DSN()), &gorm.Config{
+		Logger: gormLogger,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		panic(err)
 	}
 
 	// 4. Get the underlying sql.DB object to configure the connection pool
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
+		panic(err)
 	}
 
 	// 5. Set connection pool settings from the configuration
@@ -38,9 +45,8 @@ func NewConnection(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 
 	// 6. Ping the database to verify the connection is alive
 	if err := sqlDB.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+		panic(err)
 	}
 
-	log.Println("Database connection established successfully.")
-	return db, nil
+	return db
 }
