@@ -1,14 +1,10 @@
-.PHONY: test cover cover-html
+.PHONY: test dev
 
 # Run all tests with coverage
 test:
 	go test ./... -cover
 
-# Run all tests and output a detailed coverage profile
-cover:
-	go test ./... -coverprofile=coverage.out
-	go tool cover -func=coverage.out
-
-cover-html:
-	go test ./... -coverprofile=coverage.out
-	go tool cover -html=coverage.out -o coverage.html
+# Run development environment
+dev:
+	air &
+	npx inngest-cli@latest dev --no-discovery -u http://localhost:8080/api/inngest

@@ -12,6 +12,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/inngest/inngestgo v0.14.0
 	github.com/joho/godotenv v1.5.1
+	github.com/lmittmann/tint v1.1.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	gorm.io/datatypes v1.2.7
@@ -58,7 +59,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/lmittmann/tint v1.1.2 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
