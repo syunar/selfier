@@ -87,7 +87,7 @@ type TaskCreatedProducer interface {
 
 type Model struct {
 	ID        string    `json:"id" gorm:"type:uuid;primaryKey"`
-	CreatedAt time.Time `json:"-"`
+	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"-"`
 	// DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }

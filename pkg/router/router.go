@@ -23,6 +23,7 @@ func NewRouter(
 	jobHTTPHandler job.HTTPHandler,
 	jobEventHandler job.EventHandler,
 	inngestCfg *config.InngestConfig,
+	serverCfg *config.ServerConfig,
 	baseLogger *slog.Logger,
 ) http.Handler {
 
@@ -118,5 +119,7 @@ func NewRouter(
 
 	router.Handle("/api/inngest", client.Serve())
 
-	return router
+	corsHandler := middleware.CORSMiddleware(serverCfg.CORSAllowedOrigins)
+	finalHandler := corsHandler(router)
+	return finalHandler
 }
