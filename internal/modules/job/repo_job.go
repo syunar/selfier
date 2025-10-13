@@ -63,6 +63,7 @@ func (r *jobRepoGorm) ListByUser(ctx context.Context) ([]*Job, error) {
 		Preload("Tasks").
 		Preload("Tasks.InputImage", "image_type = 'input'").
 		Preload("Tasks.OutputImage", "image_type = 'output'").
+		Order("created_at DESC").
 		Find(&jobs).Error; err != nil {
 		return nil, mapGormError(err)
 	}

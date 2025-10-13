@@ -74,7 +74,7 @@ func main() {
 	// 4. Start server
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),
-		Handler:      router.NewRouter(jobHTTPHandler, jobEventHandler, &cfg.Inngest, log),
+		Handler:      router.NewRouter(jobHTTPHandler, jobEventHandler, &cfg.Inngest, &cfg.Server, log),
 		IdleTimeout:  time.Duration(cfg.Server.IdleTimeout) * time.Second,
 		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
 		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
