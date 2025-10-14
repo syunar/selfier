@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"selfier/pkg/middleware"
+	"time"
 )
 
 type deselfiePipelineAPI struct {
@@ -36,6 +37,8 @@ func (p *deselfiePipelineAPI) Generate(ctx context.Context, imageURL string, opt
 	}
 
 	mockOutputBase64 := base64.StdEncoding.EncodeToString(imageBytes)
+
+	time.Sleep(time.Second * 10)
 
 	return mockOutputBase64, nil
 }
