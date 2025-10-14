@@ -59,7 +59,6 @@ function ClientNew() {
 
     const handleGenerate = async () => {
         if (!selectedPhotoFile) {
-            console.error("No photo selected.");
             toast.error("Please select a photo.");
             return;
         }
@@ -105,8 +104,6 @@ function ClientNew() {
             // Handle network or other unexpected errors
             console.error("An unexpected error occurred:", error);
             toast.error("Create job failed");
-        } finally {
-            setIsGenerating(false);
         }
     };
 
