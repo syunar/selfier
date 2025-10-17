@@ -110,7 +110,7 @@ function ClientNew() {
     return (
         <div className='flex h-screen w-full flex-col items-center justify-center gap-2 md:gap-8 bg-background rounded-md px-6 py-6 transition-all duration-300 ease-in-out'>
             <div className="flex flex-col items-center justify-center gap-3">
-                <Badge icon={<Smartphone size={14} className="rotate-12" />} className='border-t-highlight/65 border-1 border-solid bg-background-light text-foreground text-caption bg-gradient-to-b from-background-light to-background shadow-sm '>Selfier</Badge>
+                <Badge icon={<Smartphone size={14} className="rotate-12" />} className='border-t-highlight/60 border-1 border-solid bg-background-light text-foreground text-caption shadow-sm '>Selfier</Badge>
                 <span className="text-heading-1 font-heading-1 text-foreground">
                     Create Stunning Photos — With Your Selfie
                 </span>
@@ -124,7 +124,7 @@ function ClientNew() {
             <div className="flex w-full max-w-[576px] flex-col items-center justify-center gap-2 px-2 py-2 shadow-sm">
                 <div className={cn(
                     "flex w-full flex-col items-center justify-center gap-2 rounded-md border-t-highlight border border-solid px-2 py-2 shadow-sm",
-                    !selectedPhotoUrl ? "bg-background-light bg-gradient-to-b from-highlight/20 to-background hover:bg-background-light transition-all duration-300 ease-in-out" : "bg-background bg-gradient-to-b from-highlight/10 to-background",
+                    !selectedPhotoUrl ? "bg-background-light bg-gradient-to-b from-highlight/20 to-background hover:bg-background-light transition-all duration-300 ease-in-out" : "bg-background-light",
                 )}>
                     {selectedPhotoUrl ? (
                         <div className="flex flex-col items-center justify-between gap-4">
