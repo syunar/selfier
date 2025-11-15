@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import type { components } from '~/lib/api-types'
 import { Badge } from './badge'
 import { Avatar } from './ui/avatar'
-import { AlertCircleIcon, CheckCheckIcon, CircleArrowDownIcon, ClockFadingIcon, HistoryIcon, MoreHorizontalIcon, RotateCwIcon } from 'lucide-react'
+import { AlertCircleIcon, CheckCheckIcon, ClockFadingIcon, MoreHorizontalIcon, RotateCwIcon } from 'lucide-react'
 import { AvatarImage } from '@radix-ui/react-avatar'
 import { apiClient } from '~/lib/api';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuShortcut, DropdownMenuTrigger } from './ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 import { Button } from './ui/button'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast';
