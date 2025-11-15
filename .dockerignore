@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules
+web/node_modules
+
+# Build artifacts
+bin/
+tmp/
+web/.next
+web/out
+*.log
+
+# Test files
+coverage.out
+cover.out
+*.test
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development tools
+.air.toml
+.pre-commit-config.yaml
+
+# Documentation
+README.md
+*.md
+
+# CI/CD
+.github
+
+# Python
+__pycache__
+*.pyc
+.pytest_cache
+modal/
+
+# Misc
+test_*.py
+Makefile
