@@ -73,10 +73,10 @@ function ClientNew() {
         // 3. Define the options payload. This should likely come from your UI state.
         //    For this example, we'll use a hardcoded value.
         const jobOptions = [
-            { "prompt": "a photo of a person" },
-            { "prompt": "a photo of a cat" },
-            { "prompt": "a photo of a dog" },
-            { "prompt": "a photo of a fish" },
+            { "prompt": "Convert image to Full-body shot with fashion pose." },
+            { "prompt": "Convert image to Ultra-Wide shot showing the full person with fashion pose." },
+            { "prompt": "Convert image to Medium-full shot from the knees up with fashion pose." },
+            { "prompt": "Convert image to Drone shot with fashion pose." },
         ];
 
         // 4. The schema requires the 'options' to be a JSON string, so we must stringify it.

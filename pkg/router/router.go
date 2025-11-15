@@ -106,8 +106,9 @@ func NewRouter(
 	_, err := inngestgo.CreateFunction(
 		client,
 		inngestgo.FunctionOpts{
-			ID:   job.TaskCreatedEventTopic,
-			Name: runtime.FuncForPC(reflect.ValueOf(job.EventHandler.TaskCreated).Pointer()).Name(),
+			ID:       job.TaskCreatedEventTopic,
+			Name:     runtime.FuncForPC(reflect.ValueOf(job.EventHandler.TaskCreated).Pointer()).Name(),
+			Timeouts: &inngestgo.ConfigTimeouts{},
 		},
 		inngestgo.EventTrigger(job.TaskCreatedEventTopic, nil),
 		jobEventHandler.TaskCreated,

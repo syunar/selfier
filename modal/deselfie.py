@@ -4,9 +4,7 @@ import math
 import uuid
 
 import modal
-from pydantic import BaseModel, Field, HttpUrl
-from typing import Optional
-
+from pydantic import BaseModel, Field
 
 # Pinning a specific commit is a great practice for reproducibility.
 diffusers_commit_sha = "23ebbb4bc81a17ebea17cb7cb94f301199e49a7f"
@@ -29,18 +27,21 @@ image = (
         "torch==2.7.1",
         "torchvision==0.22.1",
         "optimum-quanto==0.2.7",
-        "boto3",
+        "boto3",  # For S3 interaction
         "requests",
         "peft",
         "fastapi[standard]",
+        "bitsandbytes",
         extra_options="--index-strategy unsafe-best-match",
         extra_index_url="https://download.pytorch.org/whl/cu128",
     )
 )
 
 # --- Constants and Configuration ---
-MODEL_NAME = "Qwen/Qwen-Image-Edit-2509"
-BUCKET_NAME = "selfier-modal" # Make sure this bucket exists and you have access
+# MODEL_NAME = "Qwen/Qwen-Image-Edit-2509"
+MODEL_NAME = "ovedrive/Qwen-Image-Edit-2509-4bit"
+# 💡 IMPORTANT: Make sure this S3 bucket exists and you have configured secrets for it.
+BUCKET_NAME = "selfier-modal"
 CACHE_DIR = Path("/cache")
 
 # --- Modal Resources ---
@@ -66,7 +67,6 @@ app = modal.App("selfier-deselfie")
 with image.imports():
     import torch
     import boto3
-    import requests
     from diffusers import DiffusionPipeline, FlowMatchEulerDiscreteScheduler
     from diffusers.utils import load_image
     from botocore.exceptions import NoCredentialsError, ClientError
@@ -78,7 +78,6 @@ with image.imports():
 class DeselfieRequest(BaseModel):
     image_url: str
     prompt: str
-    # callback_url: Optional[str] = Field(None, description="URL to send results back to when processing is done.")
 
 class DeselfieResponse(BaseModel):
     image_url: str
@@ -86,18 +85,41 @@ class DeselfieResponse(BaseModel):
 
 @app.cls(
     image=image,
-    gpu="L40S",  # A10G is a cost-effective choice for this kind of inference. B200 is very new and expensive.
+    gpu="L4",  # A10G is a cost-effective choice for this kind of inference.
+    # gpu="H100",  # A10G is a cost-effective choice for this kind of inference.
     volumes=volumes,
     secrets=secrets,
-    scaledown_window=240, # Renamed from scaledown_window
+    # The container will stay active for 4 minutes of inactivity before shutting down.
+    scaledown_window=10,
+    # enable_memory_snapshot=True,
+    # experimental_options={"enable_gpu_snapshot": True},
+    max_containers=1,
 )
 class DeselfieModal:
+
+    # @modal.enter(snap=True)
     @modal.enter()
-    def enter(self):
+    def load(self):
         """
         This method runs once when the container starts.
         It downloads the model and initializes the pipeline and S3 client.
         """
+        # Initialize the S3 client once.
+        # It will automatically use the credentials from the Modal secret.
+        self.s3_client = boto3.client(
+            "s3",
+            endpoint_url=os.environ["AWS_ENDPOINT_URL"],
+            aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+            region_name=os.environ["AWS_REGION"],
+            config=Config(
+                signature_version="s3v4",
+                # signature_version="v4",
+                s3={'addressing_style': 'path'},
+                ),
+        )
+        print("✅ Model and S3 client initialized.")
+
         print(f"Downloading {MODEL_NAME} if necessary...")
 
         scheduler_config = {
@@ -119,15 +141,15 @@ class DeselfieModal:
         scheduler = FlowMatchEulerDiscreteScheduler.from_config(scheduler_config)
 
         dtype = torch.bfloat16
-        self.device = "cuda"
+        device = "cuda"
 
         self.pipe = DiffusionPipeline.from_pretrained(
             MODEL_NAME,
             scheduler=scheduler,
             torch_dtype=dtype,
             cache_dir=CACHE_DIR,
-        )
-        self.pipe.enable_model_cpu_offload()
+        ).to(device)
+        # self.pipe.enable_model_cpu_offload()
 
         self.pipe.load_lora_weights(
             "lightx2v/Qwen-Image-Lightning",
@@ -137,39 +159,19 @@ class DeselfieModal:
             cache_dir=CACHE_DIR,
         )
 
-        # Initialize the S3 client once
-        self.s3_client = boto3.client(
-            "s3",
-            # endpoint_url=os.environ["AWS_ENDPOINT_URL"],
-            # aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"], # Use "supabase" as the access key ID
-            # aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
-            # config=Config(signature_version="s3v4"),
-            # region_name=os.environ["AWS_REGION"] # Can be any valid AWS region, as it's not used by Supabase
-        )
-
-        print("✅ Model and S3 client initialized.")
-
-    def _generate_presigned_url(self, bucket_name, object_name, expiration=3600):
-        """Helper method to generate a presigned URL for uploading a file."""
-        try:
-            response = self.s3_client.generate_presigned_url(
-                "put_object",
-                Params={"Bucket": bucket_name, "Key": object_name, "ContentType": "image/jpeg"},
-                ExpiresIn=expiration,
-            )
-            return response
-        except (NoCredentialsError, ClientError) as e:
-            print(f"❌ Error generating presigned URL: {e}")
-            return None
+    # @modal.enter(snap=False)
+    # def setup(self):
+    #     # Move to GPU after restore
+    #     self.pipe.to("cuda")
+    #     # self.pipe.enable_model_cpu_offload()
 
     @modal.method()
-    def generate_and_upload(self, request: DeselfieRequest):
+    def generate_and_upload(self, request: DeselfieRequest) -> str:
         """
         The core background task:
         1. Runs inference to generate an image.
-        2. Generates a presigned URL for S3 upload.
-        3. Uploads the image to S3.
-        4. Sends a callback with the final public image URL.
+        2. Uploads the image bytes directly to S3.
+        3. Generates and returns a presigned GET URL for the uploaded image.
         """
         print(f"Running inference for prompt: {request.prompt}")
         try:
@@ -188,85 +190,86 @@ class DeselfieModal:
                 pil_image.save(buffer, format="JPEG")
                 image_bytes = buffer.getvalue()
 
-            # 2. Prepare for S3 upload
+            # 2. Upload image bytes directly to S3
             object_name = f"generated/{uuid.uuid4()}.jpg"
-            presigned_url = self._generate_presigned_url(BUCKET_NAME, object_name)
+            print(f"Uploading image to S3 object: s3://{BUCKET_NAME}/{object_name}")
 
-            if not presigned_url:
-                raise Exception("Failed to get a presigned URL.")
-
-            # 3. Upload image bytes to S3 using the presigned URL
-            print(f"Uploading image to S3 object: {object_name}")
-            response = requests.put(
-                presigned_url,
-                data=image_bytes,
-                headers={"Content-Type": "image/jpeg"},
+            self.s3_client.put_object(
+                Bucket=BUCKET_NAME,
+                Key=object_name,
+                Body=image_bytes,
+                ContentType="image/jpeg",
             )
-            response.raise_for_status()  # Will raise an exception for 4xx/5xx responses
-            print(f"✅ Image uploaded to presigned_url: {presigned_url}")
+            print("✅ Image uploaded successfully.")
 
-            # # 4. Send callback if a URL was provided
-            # if request.callback_url:
-            #     print(f"Sending success callback to {request.callback_url}")
-            #     requests.post(
-            #         str(request.callback_url),
-            #         json={"status": "success", "image_url": presigned_url},
-            #     )
+            # 3. Generate a presigned URL to *view* (GET) the object
+            presigned_get_url = self.s3_client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": BUCKET_NAME, "Key": object_name},
+                ExpiresIn=3600,  # The URL will be valid for 1 hour
+            )
+            print(f"✅ Generated presigned GET URL. {presigned_get_url=}")
 
+            return presigned_get_url
+
+        except (NoCredentialsError, ClientError) as e:
+            print(f"❌ S3 Error: {e}")
+            raise  # Re-raise the exception to signal a failure to the caller
         except Exception as e:
-            print(f"❌ An error occurred: {e}")
-            # Optionally send a failure callback
-            # if request.callback_url:
-            #     print(f"Sending failure callback to {request.callback_url}")
-            #     requests.post(
-            #         str(request.callback_url),
-            #         json={"status": "error", "message": str(e)},
-            #     )
-            presigned_url = None
+            print(f"❌ An error occurred during generation or upload: {e}")
+            raise
 
-        return presigned_url
-
-    @modal.fastapi_endpoint(method="POST", docs=True)
+    @modal.fastapi_endpoint(method="POST", requires_proxy_auth=True)
     def generate(self, request: DeselfieRequest) -> DeselfieResponse:
         """
         This is the public-facing API endpoint.
-        It immediately spawns the generation task to run in the background
-        and returns a confirmation to the client.
+        It runs the image generation and S3 upload synchronously and returns
+        the presigned URL of the final image.
         """
-        print(
-            f"Received request to generate image. Spawning background task."
-        )
+        print(f"Received request for prompt: '{request.prompt}'. Running synchronously.")
 
-        # Use .spawn() to run the method in the background (fire-and-forget)
+        # The .local() call runs the method and waits for it to complete.
+        # The entire API request will block until the image is generated, uploaded,
+        # and the URL is returned.
         output_image_url = self.generate_and_upload.local(request)
 
-        # return DeselfieResponse(
-        #     status="processing",
-        #     message="Image generation has started. You will receive a notification at your callback_url.",
-        # )
+        print(f"✅ Generated presigned GET URL.")
         return DeselfieResponse(image_url=output_image_url)
+
 
 @app.local_entrypoint()
 def main():
-
     import requests
+    import os
 
-    server = DeselfieModal()
-    endpoint_url = server.generate.get_web_url()
+    # This local entrypoint is for testing your Modal app from your local machine.
+    # It requires your Modal client to be authenticated (modal token set).
+    # You need to manually set the required secrets as environment variables for local testing.
+    # For example:
+    # export AWS_ACCESS_KEY_ID="your_key"
+    # export AWS_SECRET_ACCESS_KEY="your_secret"
+    # modal run your_script.py
 
-    request = DeselfieRequest(
+    # IMPORTANT: The class needs to be instantiated to access its web endpoint URL.
+    # This does not run the @modal.enter() hook.
+    instance = DeselfieModal()
+    endpoint_url = instance.generate.get_web_url()
+    print(f"Testing endpoint: {endpoint_url}")
+
+    request_data = DeselfieRequest(
+        # Replace with a valid, publicly accessible image URL for testing
         image_url="https://ltxijvwnxpxbbvpkcnhh.supabase.co/storage/v1/object/sign/selfier/output-7e0067d6-dfbd-4d70-b704-2a7f38a26b4c.jpg_1760380898?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8wYjU0ZGYwYy0zODQxLTRiNWUtYTYwZC0wMzcwZjVhOTQzYjUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJzZWxmaWVyL291dHB1dC03ZTAwNjdkNi1kZmJkLTRkNzAtYjcwNC0yYTdmMzhhMjZiNGMuanBnXzE3NjAzODA4OTgiLCJpYXQiOjE3NjA4MDk1MzYsImV4cCI6MTc2MTQxNDMzNn0.r2un3lZhwCohev1hWvB_Ms3jCDS7-fcWDlGJQYQrl3Y",
-        prompt="Convert image to Full-body shot with fashion pose.",
-        # callback_url=HttpUrl("https://example.com/callback"),
+        prompt="Convert image to lineart.",
     )
 
-    payload = request.model_dump()
+    payload = request_data.model_dump()
 
-    response = requests.post(
-        endpoint_url,
-        json=payload,
-        # headers=headers
-        )
-    response.raise_for_status()
+    print("Sending POST request with payload:", payload)
+    response = requests.post(endpoint_url, json=payload)
 
-    print(response.json())
+    if response.ok:
+        print("✅ Request successful!")
+        print(f"{response.json()['image_url']=}")
+    else:
+        print(f"❌ Request failed with status code: {response.status_code}")
+        print("Response text:", response.text)
