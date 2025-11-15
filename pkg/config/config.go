@@ -20,6 +20,7 @@ type Config struct {
 	Auth     AuthConfig     `mapstructure:"auth"     validate:"required"`
 	AWS      AWSConfig      `mapstructure:"aws"      validate:"required"`
 	Inngest  InngestConfig  `mapstructure:"inngest"  validate:"required"`
+	Modal    ModalConfig    `mapstructure:"modal"    validate:"required"`
 }
 
 type Primary struct {
@@ -84,6 +85,12 @@ type InngestConfig struct {
 	Dev   bool   `mapstructure:"dev"    validate:"required"`
 }
 
+type ModalConfig struct {
+	EndpointDeselfie string `mapstructure:"endpoint_deselfie" validate:"required"`
+	TokenID          string `mapstructure:"token_id" validate:"required"`
+	TokenSecret      string `mapstructure:"token_secret" validate:"required"`
+}
+
 // LoadConfig reads configuration from file and/or environment variables.
 func LoadConfig() *Config {
 	var cfg Config
@@ -119,6 +126,10 @@ func LoadConfig() *Config {
 
 	viper.SetDefault("inngest.app_id", "selfier")
 	viper.SetDefault("inngest.dev", true)
+
+	viper.SetDefault("modal.endpoint_deselfie", "https://selfier-inc--selfier-mock-deselfie-mockdeselfiemodal-generate.modal.run")
+	viper.SetDefault("modal.token_id", "your-modal-token-id")
+	viper.SetDefault("modal.token_secret", "your-modal-token-secret")
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
